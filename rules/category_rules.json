@@ -1,0 +1,49 @@
+[
+    {
+        "rule_name": "UPI_TRANSFER_RULE",
+        "patterns": ["UPI"],
+        "category": "TRANSFER OUT"
+    },
+
+    {
+        "rule_name": "IMPS_RULE",
+        "patterns": ["IMPS"],
+        "category": "ELECTRONIC FUND TRANSFER"
+    },
+
+    {
+        "rule_name": "NEFT_RULE",
+        "patterns": ["NEFT"],
+        "category": "ELECTRONIC FUND TRANSFER"
+    },
+
+    {
+        "rule_name": "RTGS_RULE",
+        "patterns": ["RTGS"],
+        "category": "ELECTRONIC FUND TRANSFER"
+    },
+
+    {
+        "rule_name": "ATM_WITHDRAWAL_RULE",
+        "patterns": ["ATM"],
+        "category": "ATM WITHDRAWAL"
+    },
+
+    {
+        "rule_name": "SALARY_RULE",
+        "patterns": ["SALARY"],
+        "category": "SALARY RECEIVED"
+    },
+
+    {
+        "rule_name": "INTEREST_RULE",
+        "patterns": ["INTEREST"],
+        "category": "INTEREST"
+    },
+
+    {
+        "rule_name": "INSURANCE_RULE",
+        "patterns": ["INS"],
+        "category": "INSURANCE"
+    }
+]

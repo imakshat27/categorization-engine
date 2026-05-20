@@ -1,6 +1,7 @@
 import streamlit as st
 
 from engine.loader import load_transactions
+from engine.normalizer import normalize_text
 
 
 # =========================
@@ -62,6 +63,32 @@ if uploaded_file and sheet_name:
         st.subheader("Raw Transactions")
 
         st.dataframe(df)
+
+        # =========================
+        # NORMALIZATION
+        # =========================
+
+        df["Normalized Narration"] = df["Narration"].apply(
+            normalize_text
+        )
+
+
+        # =========================
+        # NORMALIZED OUTPUT
+        # =========================
+
+        st.subheader("Normalized Transactions")
+
+        st.dataframe(
+
+            df[
+                [
+                    "Narration",
+                    "Normalized Narration"
+                ]
+            ]
+
+        )
 
     except Exception as e:
 
