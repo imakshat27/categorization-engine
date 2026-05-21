@@ -1,0 +1,43 @@
+[
+    {
+        "rule_name": "UPI_MODE_RULE",
+        "patterns": ["UPI"],
+        "mode": "UPI"
+    },
+
+    {
+        "rule_name": "IMPS_MODE_RULE",
+        "patterns": ["IMPS"],
+        "mode": "IMPS"
+    },
+
+    {
+        "rule_name": "NEFT_MODE_RULE",
+        "patterns": ["NEFT"],
+        "mode": "NEFT"
+    },
+
+    {
+        "rule_name": "RTGS_MODE_RULE",
+        "patterns": ["RTGS"],
+        "mode": "RTGS"
+    },
+
+    {
+        "rule_name": "ATM_MODE_RULE",
+        "patterns": ["ATM"],
+        "mode": "ATM"
+    },
+
+    {
+        "rule_name": "ECS_MODE_RULE",
+        "patterns": ["ECS"],
+        "mode": "ECS"
+    },
+
+    {
+        "rule_name": "CHEQUE_MODE_RULE",
+        "patterns": ["CHQ", "CHEQUE"],
+        "mode": "CHEQUE"
+    }
+]

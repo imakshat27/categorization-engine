@@ -1,0 +1,31 @@
+[
+    {
+        "rule_name": "AMAZON_RULE",
+        "patterns": ["AMAZON", "AMZN"],
+        "merchant": "AMAZON"
+    },
+
+    {
+        "rule_name": "SWIGGY_RULE",
+        "patterns": ["SWIGGY"],
+        "merchant": "SWIGGY"
+    },
+
+    {
+        "rule_name": "ZOMATO_RULE",
+        "patterns": ["ZOMATO"],
+        "merchant": "ZOMATO"
+    },
+
+    {
+        "rule_name": "IRCTC_RULE",
+        "patterns": ["IRCTC"],
+        "merchant": "IRCTC"
+    },
+
+    {
+        "rule_name": "HPCL_RULE",
+        "patterns": ["HPCL", "HINDUSTAN PETROLEUM"],
+        "merchant": "HPCL"
+    }
+]

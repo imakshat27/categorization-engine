@@ -1,7 +1,7 @@
 import streamlit as st
 
 from engine.loader import load_transactions
-from engine.normalizer import normalize_text
+from engine.pipeline import process_transactions
 
 
 # =========================
@@ -42,19 +42,21 @@ sheet_name = st.text_input(
 
 
 # =========================
-# LOAD DATA
+# LOAD + PROCESS
 # =========================
 
 if uploaded_file and sheet_name:
 
     try:
 
+        # load raw dataframe
         df = load_transactions(
             uploaded_file,
             sheet_name
         )
 
         st.success("File Loaded Successfully")
+
 
         # =========================
         # RAW DATA
@@ -64,13 +66,12 @@ if uploaded_file and sheet_name:
 
         st.dataframe(df)
 
+
         # =========================
-        # NORMALIZATION
+        # PROCESS PIPELINE
         # =========================
 
-        df["Normalized Narration"] = df["Narration"].apply(
-            normalize_text
-        )
+        processed_df = process_transactions(df)
 
 
         # =========================
@@ -81,10 +82,60 @@ if uploaded_file and sheet_name:
 
         st.dataframe(
 
-            df[
+            processed_df[
                 [
                     "Narration",
                     "Normalized Narration"
+                ]
+            ]
+
+        )
+
+
+        # =========================
+        # PARSER OUTPUT
+        # =========================
+
+        st.subheader("UPI Parsing Output")
+
+        st.dataframe(
+
+            processed_df[
+                [
+                    "Normalized Narration",
+                    "Entity Name",
+                    "UPI ID",
+                    "UPI Handle"
+                ]
+            ]
+
+        )
+
+
+        # =========================
+        # FINAL OUTPUT
+        # =========================
+
+        st.subheader("Classification Output")
+
+        st.dataframe(
+
+            processed_df[
+                [
+                    "Narration",
+                    "Normalized Narration",
+
+                    "Direction",
+                    "Mode",
+
+                    "Entity Name",
+                    "UPI ID",
+                    "UPI Handle",
+
+                    "Merchant",
+
+                    "Category",
+                    "Matched Rule"
                 ]
             ]
 
