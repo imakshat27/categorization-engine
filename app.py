@@ -135,7 +135,12 @@ if uploaded_file and sheet_name:
                     "Merchant",
 
                     "Category",
-                    "Matched Rule"
+                    "Matched Rule",
+
+                    "Bounce Flag",
+                    "Charge Flag",
+                    "Reversal Flag",
+                    "Salary Flag",
                 ]
             ]
 

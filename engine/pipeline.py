@@ -7,6 +7,13 @@ from engine.classifier import (
     classify_transaction
 )
 
+from engine.signals import (
+    detect_bounce,
+    detect_charge,
+    detect_reversal,
+    detect_salary
+)
+
 from engine.parser import parse_upi_transaction
 
 
@@ -79,6 +86,29 @@ def process_transactions(df):
     df["UPI Handle"] = upi_results.apply(
         lambda x: x["upi_handle"]
     )
+
+    # =========================
+    # SIGNAL EXTRACTION
+    # =========================
+
+    df["Bounce Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_bounce)
+
+
+    df["Charge Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_charge)
+
+
+    df["Reversal Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_reversal)
+
+
+    df["Salary Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_salary)
 
 
     # =========================
