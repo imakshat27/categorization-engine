@@ -11,7 +11,8 @@ from engine.signals import (
     detect_bounce,
     detect_charge,
     detect_reversal,
-    detect_salary
+    detect_salary,
+    
 )
 
 from engine.parser import parse_upi_transaction
