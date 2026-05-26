@@ -96,14 +96,22 @@ if uploaded_file and sheet_name:
         # PARSER OUTPUT
         # =========================
 
-        st.subheader("UPI Parsing Output")
+        st.subheader("Transaction Parsing Output")
 
         st.dataframe(
 
             processed_df[
                 [
                     "Normalized Narration",
+
+                    "Transaction Prefix",
+                    "Transaction Subtype",
+
+                    "Reference ID",
+
                     "Entity Name",
+                    "Bank Name",
+
                     "UPI ID",
                     "UPI Handle"
                 ]
@@ -134,13 +142,30 @@ if uploaded_file and sheet_name:
 
                     "Merchant",
 
-                    "Category",
-                    "Matched Rule",
-
                     "Bounce Flag",
                     "Charge Flag",
                     "Reversal Flag",
                     "Salary Flag",
+                    "Tax Flag",
+                    "Cash Flag",
+                    "Deposit Flag",
+                    "Withdrawal Flag",
+                    "ATM Flag",
+                    "Cheque Flag",
+                    "Investment Flag",
+                    "Insurance Flag",
+                    "Recharge Flag",
+                    "Travel Flag",
+                    "Utility Flag",
+                    "Loan Flag",
+
+                    "Transaction Prefix",
+                    "Transaction Subtype",
+                    "Reference ID",
+                    "Bank Name",
+                    
+                    "Category",
+                    "Matched Rule",
                 ]
             ]
 

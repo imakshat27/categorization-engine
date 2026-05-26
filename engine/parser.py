@@ -1,45 +1,66 @@
 import re
 
+# ======================================
+# DEFAULT PARSER OUTPUT
+# ======================================
 
-def parse_upi_transaction(narration):
+def empty_parser_result():
 
-    result = {
+    return {
+
+        "transaction_prefix": "UNKNOWN",
+
+        "transaction_subtype": "UNKNOWN",
+
+        "reference_id": "UNKNOWN",
+
         "entity_name": "UNKNOWN",
+
+        "bank_name": "UNKNOWN",
+
         "upi_id": "UNKNOWN",
+
         "upi_handle": "UNKNOWN"
     }
 
-    # split narration
+
+# ======================================
+# UPI PARSER
+# ======================================
+
+def parse_upi_transaction(narration):
+
+    result = empty_parser_result()
+
     parts = narration.split("/")
 
 
-    # =========================
-    # ENTITY EXTRACTION
-    # =========================
+    # prefix
+    result["transaction_prefix"] = "UPI"
 
-    # usually second token
+
+    # subtype
     if len(parts) >= 2:
-
-        entity = parts[1].strip()
-
-        # avoid empty values
-        if entity:
-            result["entity_name"] = entity
+        result["transaction_subtype"] = parts[1]
 
 
-    # =========================
-    # UPI ID EXTRACTION
-    # =========================
+    # reference id
+    if len(parts) >= 3:
+        result["reference_id"] = parts[2]
 
-    # regex for UPI IDs
+
+    # entity
+    if len(parts) >= 4:
+        result["entity_name"] = parts[3]
+
+
+    # UPI ID extraction
     upi_pattern = r'[\w\.-]+@[\w]+'
-
 
     match = re.search(
         upi_pattern,
         narration
     )
-
 
     if match:
 
@@ -47,11 +68,133 @@ def parse_upi_transaction(narration):
 
         result["upi_id"] = upi_id
 
+        result["upi_handle"] = (
+            upi_id.split("@")[1]
+            .upper()
+        )
 
-        # extract handle
-        handle = upi_id.split("@")[1]
+    return result
 
-        result["upi_handle"] = handle.upper()
+
+# ======================================
+# NEFT PARSER
+# ======================================
+
+def parse_neft_transaction(narration):
+
+    result = empty_parser_result()
+
+    parts = narration.split("/")
+
+
+    result["transaction_prefix"] = "NEFT"
+
+
+    # reference id
+    if len(parts) >= 2:
+        result["reference_id"] = parts[1]
+
+
+    # entity
+    if len(parts) >= 3:
+        result["entity_name"] = parts[2]
 
 
     return result
+
+# ======================================
+# IMPS PARSER
+# ======================================
+
+def parse_imps_transaction(narration):
+
+    result = empty_parser_result()
+
+    parts = narration.split("/")
+
+
+    result["transaction_prefix"] = "IMPS"
+
+
+    # subtype
+    if len(parts) >= 2:
+        result["transaction_subtype"] = parts[1]
+
+
+    # reference id
+    if len(parts) >= 3:
+        result["reference_id"] = parts[2]
+
+
+    # entity
+    if len(parts) >= 4:
+        result["entity_name"] = parts[3]
+
+
+    return result
+
+# ======================================
+# ATM PARSER
+# ======================================
+
+def parse_atm_transaction(narration):
+
+    result = empty_parser_result()
+
+    result["transaction_prefix"] = "ATM"
+
+    return result
+
+# ======================================
+# CHEQUE PARSER
+# ======================================
+
+def parse_cheque_transaction(narration):
+
+    result = empty_parser_result()
+
+    result["transaction_prefix"] = "CHEQUE"
+
+    parts = narration.split("/")
+
+
+    # cheque reference
+    if len(parts) >= 2:
+        result["reference_id"] = parts[1]
+
+
+    return result
+
+
+# ======================================
+# PARSER ROUTER
+# ======================================
+
+def parse_transaction(row):
+
+    narration = row["Normalized Narration"]
+
+    mode = row["Mode"]
+
+
+    if mode == "UPI":
+        return parse_upi_transaction(narration)
+
+
+    if mode == "NEFT":
+        return parse_neft_transaction(narration)
+
+
+    if mode == "IMPS":
+        return parse_imps_transaction(narration)
+
+
+    if mode == "ATM":
+        return parse_atm_transaction(narration)
+
+
+    if mode == "CHEQUE":
+        return parse_cheque_transaction(narration)
+
+
+    return empty_parser_result()

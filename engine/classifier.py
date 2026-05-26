@@ -79,29 +79,290 @@ def resolve_category(base_category, direction):
 
 def classify_transaction(row):
 
-    narration = row["Normalized Narration"]
+    # =====================================
+    # EXTRACT METADATA
+    # =====================================
+
     direction = row["Direction"]
 
-    rules = load_category_rules()
+    mode = row["Mode"]
 
-    # check all rules
-    for rule in rules:
+    merchant = row["Merchant"]
 
-        # check all patterns
-        for pattern in rule["patterns"]:
+    subtype = row["Transaction Subtype"]
 
-            if pattern in narration:
 
-                return {
-                    "category": resolve_category(
-                        rule["category"],
-                        direction
-                    ),
+    # =====================================
+    # EXTRACT SIGNALS
+    # =====================================
 
-                    "matched_rule": rule["rule_name"]
-                }
+    bounce_flag = row["Bounce Flag"]
+
+    charge_flag = row["Charge Flag"]
+
+    reversal_flag = row["Reversal Flag"]
+
+    salary_flag = row["Salary Flag"]
+
+    tax_flag = row["Tax Flag"]
+
+    cash_flag = row["Cash Flag"]
+
+    deposit_flag = row["Deposit Flag"]
+
+    withdrawal_flag = row["Withdrawal Flag"]
+
+    atm_flag = row["ATM Flag"]
+
+    cheque_flag = row["Cheque Flag"]
+
+    investment_flag = row["Investment Flag"]
+
+    insurance_flag = row["Insurance Flag"]
+
+    recharge_flag = row["Recharge Flag"]
+
+    travel_flag = row["Travel Flag"]
+
+    utility_flag = row["Utility Flag"]
+
+    loan_flag = row["Loan Flag"]
+
+
+    # =====================================
+    # REVERSAL / REFUND
+    # =====================================
+
+    if reversal_flag:
+
+        return {
+            "category": "REFUND OR REVERSAL",
+            "matched_rule": "REVERSAL_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # BOUNCE CHARGES
+    # =====================================
+
+    if bounce_flag and charge_flag:
+
+        if mode == "IMPS":
+
+            return {
+                "category": "IMPS BOUNCE CHARGES",
+                "matched_rule": "IMPS_BOUNCE_SIGNAL_RULE"
+            }
+
+        if mode == "ECS":
+
+            return {
+                "category": "ECS BOUNCED CHARGES",
+                "matched_rule": "ECS_BOUNCE_SIGNAL_RULE"
+            }
+
+        if mode == "ACH":
+
+            return {
+                "category": "ACH BOUNCED CHARGES",
+                "matched_rule": "ACH_BOUNCE_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # SALARY
+    # =====================================
+
+    if salary_flag:
+
+        if direction == "IN":
+
+            return {
+                "category": "SALARY RECEIVED",
+                "matched_rule": "SALARY_IN_SIGNAL_RULE"
+            }
+
+        if direction == "OUT":
+
+            return {
+                "category": "SALARY PAID",
+                "matched_rule": "SALARY_OUT_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # ATM
+    # =====================================
+
+    if atm_flag:
+
+        if withdrawal_flag:
+
+            return {
+                "category": "ATM WITHDRAWAL",
+                "matched_rule": "ATM_WITHDRAWAL_SIGNAL_RULE"
+            }
+
+        if deposit_flag:
+
+            return {
+                "category": "ATM DEPOSIT",
+                "matched_rule": "ATM_DEPOSIT_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # CASH
+    # =====================================
+
+    if cash_flag:
+
+        if withdrawal_flag:
+
+            return {
+                "category": "CASH WITHDRAWAL",
+                "matched_rule": "CASH_WITHDRAWAL_SIGNAL_RULE"
+            }
+
+        if deposit_flag:
+
+            return {
+                "category": "CASH DEPOSIT",
+                "matched_rule": "CASH_DEPOSIT_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # TAX
+    # =====================================
+
+    if tax_flag:
+
+        return {
+            "category": "TAX",
+            "matched_rule": "TAX_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # INVESTMENTS
+    # =====================================
+
+    if investment_flag:
+
+        return {
+            "category": "INVESTMENTS",
+            "matched_rule": "INVESTMENT_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # INSURANCE
+    # =====================================
+
+    if insurance_flag:
+
+        return {
+            "category": "INSURANCE",
+            "matched_rule": "INSURANCE_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # RECHARGE
+    # =====================================
+
+    if recharge_flag:
+
+        return {
+            "category": "RECHARGE",
+            "matched_rule": "RECHARGE_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # TRAVEL
+    # =====================================
+
+    if travel_flag:
+
+        return {
+            "category": "TRAVEL",
+            "matched_rule": "TRAVEL_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # UTILITY
+    # =====================================
+
+    if utility_flag:
+
+        return {
+            "category": "UTILITY",
+            "matched_rule": "UTILITY_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # LOAN
+    # =====================================
+
+    if loan_flag:
+
+        return {
+            "category": "LOAN",
+            "matched_rule": "LOAN_SIGNAL_RULE"
+        }
+
+
+    # =====================================
+    # CHEQUE
+    # =====================================
+
+    if cheque_flag:
+
+        if withdrawal_flag:
+
+            return {
+                "category": "CHEQUE WITHDRAWAL",
+                "matched_rule": "CHEQUE_WITHDRAWAL_SIGNAL_RULE"
+            }
+
+        if deposit_flag:
+
+            return {
+                "category": "CHEQUE DEPOSIT",
+                "matched_rule": "CHEQUE_DEPOSIT_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # TRANSFER LOGIC
+    # =====================================
+
+    if mode in ["UPI", "IMPS", "NEFT", "RTGS"]:
+
+        if direction == "IN":
+
+            return {
+                "category": "TRANSFER IN",
+                "matched_rule": "TRANSFER_IN_SIGNAL_RULE"
+            }
+
+        if direction == "OUT":
+
+            return {
+                "category": "TRANSFER OUT",
+                "matched_rule": "TRANSFER_OUT_SIGNAL_RULE"
+            }
+
+
+    # =====================================
+    # FALLBACK
+    # =====================================
 
     return {
         "category": "UNCLASSIFIED",
-        "matched_rule": "NO_RULE_MATCHED"
+        "matched_rule": "NO_SIGNAL_MATCH"
     }

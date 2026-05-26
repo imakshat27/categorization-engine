@@ -35,6 +35,7 @@ def detect_charge(narration):
 def detect_reversal(narration):
 
     reversal_keywords = [
+        "REV",
         "REVERSAL",
         "REFUND",
         "REVERSED"
@@ -124,7 +125,9 @@ def detect_withdrawal(narration):
 def detect_atm(narration):
 
     keywords = [
-        "ATM"
+        "ATM",
+        "ATW",
+        "NWD"
     ]
 
     return any(

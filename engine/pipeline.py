@@ -12,10 +12,21 @@ from engine.signals import (
     detect_charge,
     detect_reversal,
     detect_salary,
-    
+    detect_tax,
+    detect_cash,
+    detect_deposit,
+    detect_withdrawal,
+    detect_atm,
+    detect_cheque,
+    detect_investment,
+    detect_insurance,
+    detect_recharge,
+    detect_travel,
+    detect_utility,
+    detect_loan
 )
 
-from engine.parser import parse_upi_transaction
+from engine.parser import parse_transaction
 
 
 def process_transactions(df):
@@ -68,25 +79,49 @@ def process_transactions(df):
 
 
     # =========================
-    # UPI PARSING
+    # TRANSACTION PARSING
     # =========================
 
-    upi_results = df[
-        "Normalized Narration"
-    ].apply(parse_upi_transaction)
+    parse_results = df.apply(
+        parse_transaction,
+        axis=1
+    )
 
 
-    df["Entity Name"] = upi_results.apply(
+    df["Transaction Prefix"] = parse_results.apply(
+        lambda x: x["transaction_prefix"]
+    )
+
+
+    df["Transaction Subtype"] = parse_results.apply(
+        lambda x: x["transaction_subtype"]
+    )
+
+
+    df["Reference ID"] = parse_results.apply(
+        lambda x: x["reference_id"]
+    )
+
+
+    df["Entity Name"] = parse_results.apply(
         lambda x: x["entity_name"]
     )
 
-    df["UPI ID"] = upi_results.apply(
+
+    df["Bank Name"] = parse_results.apply(
+        lambda x: x["bank_name"]
+    )
+
+
+    df["UPI ID"] = parse_results.apply(
         lambda x: x["upi_id"]
     )
 
-    df["UPI Handle"] = upi_results.apply(
+
+    df["UPI Handle"] = parse_results.apply(
         lambda x: x["upi_handle"]
     )
+
 
     # =========================
     # SIGNAL EXTRACTION
@@ -112,6 +147,66 @@ def process_transactions(df):
     ].apply(detect_salary)
 
 
+    df["Tax Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_tax)
+
+
+    df["Cash Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_cash)
+
+
+    df["Deposit Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_deposit)
+
+
+    df["Withdrawal Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_withdrawal)
+
+
+    df["ATM Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_atm)
+
+
+    df["Cheque Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_cheque)
+
+
+    df["Investment Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_investment)
+
+
+    df["Insurance Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_insurance)
+
+
+    df["Recharge Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_recharge)
+
+
+    df["Travel Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_travel)
+
+
+    df["Utility Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_utility)
+
+
+    df["Loan Flag"] = df[
+        "Normalized Narration"
+    ].apply(detect_loan)
+
+
     # =========================
     # CATEGORY CLASSIFICATION
     # =========================
@@ -125,6 +220,7 @@ def process_transactions(df):
     df["Category"] = classification_results.apply(
         lambda x: x["category"]
     )
+
 
     df["Matched Rule"] = classification_results.apply(
         lambda x: x["matched_rule"]
