@@ -7,6 +7,14 @@ from engine.classifier import (
     classify_transaction
 )
 
+from engine.entity_intelligence import (
+    detect_entity_type
+)
+
+from engine.entity_intelligence import (
+    detect_entity_type
+)
+
 from engine.signals import (
     detect_bounce,
     detect_charge,
@@ -122,6 +130,36 @@ def process_transactions(df):
         lambda x: x["upi_handle"]
     )
 
+    df["Parse Quality"] = parse_results.apply(
+        lambda x: x["parse_quality"]
+    )
+
+    entity_results = df["Entity Name"].apply(
+        detect_entity_type
+    )
+
+    # =========================
+    # ENTITY INTELLIGENCE
+    # =========================
+
+    entity_results = df[
+        "Entity Name"
+    ].apply(detect_entity_type)
+
+
+    df["Entity Type"] = entity_results.apply(
+        lambda x: x["entity_type"]
+    )
+
+
+    df["Entity Confidence"] = entity_results.apply(
+        lambda x: x["entity_confidence"]
+    )
+
+
+    df["Matched Entity Rule"] = entity_results.apply(
+        lambda x: x["matched_entity_rule"]
+    )
 
     # =========================
     # SIGNAL EXTRACTION
@@ -206,7 +244,7 @@ def process_transactions(df):
         "Normalized Narration"
     ].apply(detect_loan)
 
-
+    
     # =========================
     # CATEGORY CLASSIFICATION
     # =========================
@@ -226,5 +264,28 @@ def process_transactions(df):
         lambda x: x["matched_rule"]
     )
 
+    
+
+    # =========================
+    # CONFIDENCE SCORING
+    # =========================
+
+    df["Confidence"] = classification_results.apply(
+        lambda x: x.get("confidence", 0.0)
+    )
+
+
+    df["Decision Path"] = classification_results.apply(
+        lambda x: " | ".join(
+            x.get("decision_path", [])
+        )
+    )
+
+
+    df["Conflicts"] = classification_results.apply(
+        lambda x: " | ".join(
+            x.get("conflicts", [])
+        )
+    )
 
     return df

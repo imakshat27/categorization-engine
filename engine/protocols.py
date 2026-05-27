@@ -1,0 +1,8 @@
+PROTOCOL_SUBTYPES = {
+
+    "P2M": "MERCHANT_PAYMENT",
+
+    "P2V": "PEER_TRANSFER",
+
+    "REV": "REVERSAL"
+}

@@ -1,3 +1,16 @@
+import re
+
+
+def safe_keyword_match(keyword, narration):
+
+    pattern = rf'\b{re.escape(keyword)}\b'
+
+    return re.search(
+        pattern,
+        narration
+    ) is not None
+
+
 def detect_bounce(narration):
 
     bounce_keywords = [
@@ -8,7 +21,10 @@ def detect_bounce(narration):
 
     for keyword in bounce_keywords:
 
-        if keyword in narration:
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
             return True
 
     return False
@@ -25,7 +41,10 @@ def detect_charge(narration):
 
     for keyword in charge_keywords:
 
-        if keyword in narration:
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
             return True
 
     return False
@@ -43,7 +62,10 @@ def detect_reversal(narration):
 
     for keyword in reversal_keywords:
 
-        if keyword in narration:
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
             return True
 
     return False
@@ -59,10 +81,14 @@ def detect_salary(narration):
 
     for keyword in salary_keywords:
 
-        if keyword in narration:
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
             return True
 
     return False
+
 
 
 def detect_tax(narration):
@@ -73,10 +99,15 @@ def detect_tax(narration):
         "TDS"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -86,10 +117,15 @@ def detect_cash(narration):
         "CASH"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -97,13 +133,17 @@ def detect_deposit(narration):
 
     keywords = [
         "DEPOSIT",
-        "CR"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -112,13 +152,17 @@ def detect_withdrawal(narration):
     keywords = [
         "WITHDRAWAL",
         "WD",
-        "DR"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -130,10 +174,15 @@ def detect_atm(narration):
         "NWD"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -144,10 +193,15 @@ def detect_cheque(narration):
         "CHEQUE"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -160,10 +214,15 @@ def detect_investment(narration):
         "SIP"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -174,10 +233,15 @@ def detect_insurance(narration):
         "LIC"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -187,10 +251,15 @@ def detect_recharge(narration):
         "RECHARGE"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -202,10 +271,15 @@ def detect_travel(narration):
         "YATRA"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -218,10 +292,15 @@ def detect_utility(narration):
         "BILL"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False
 
 
 
@@ -232,7 +311,12 @@ def detect_loan(narration):
         "EMI"
     ]
 
-    return any(
-        keyword in narration
-        for keyword in keywords
-    )
+    for keyword in keywords:
+
+        if safe_keyword_match(
+            keyword,
+            narration
+        ):
+            return True
+
+    return False

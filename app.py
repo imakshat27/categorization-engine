@@ -78,18 +78,18 @@ if uploaded_file and sheet_name:
         # NORMALIZED OUTPUT
         # =========================
 
-        st.subheader("Normalized Transactions")
+        # st.subheader("Normalized Transactions")
 
-        st.dataframe(
+        # st.dataframe(
 
-            processed_df[
-                [
-                    "Narration",
-                    "Normalized Narration"
-                ]
-            ]
+        #     processed_df[
+        #         [
+        #             "Narration",
+        #             "Normalized Narration"
+        #         ]
+        #     ]
 
-        )
+        # )
 
 
         # =========================
@@ -118,6 +118,7 @@ if uploaded_file and sheet_name:
             ]
 
         )
+        
 
 
         # =========================
@@ -139,7 +140,7 @@ if uploaded_file and sheet_name:
                     "Entity Name",
                     "UPI ID",
                     "UPI Handle",
-
+                    "Parse Quality",
                     "Merchant",
 
                     "Bounce Flag",
@@ -158,12 +159,15 @@ if uploaded_file and sheet_name:
                     "Travel Flag",
                     "Utility Flag",
                     "Loan Flag",
-
+                    "Entity Type",
+                    "Entity Confidence",
                     "Transaction Prefix",
                     "Transaction Subtype",
                     "Reference ID",
                     "Bank Name",
-                    
+                    "Confidence",
+                    "Decision Path",
+                    "Conflicts",
                     "Category",
                     "Matched Rule",
                 ]

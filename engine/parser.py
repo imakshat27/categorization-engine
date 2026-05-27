@@ -1,5 +1,6 @@
 import re
 
+
 # ======================================
 # DEFAULT PARSER OUTPUT
 # ======================================
@@ -20,7 +21,9 @@ def empty_parser_result():
 
         "upi_id": "UNKNOWN",
 
-        "upi_handle": "UNKNOWN"
+        "upi_handle": "UNKNOWN",
+
+        "parse_quality": "LOW"
     }
 
 
@@ -35,26 +38,71 @@ def parse_upi_transaction(narration):
     parts = narration.split("/")
 
 
-    # prefix
-    result["transaction_prefix"] = "UPI"
+    # ======================================
+    # EMPTY SAFETY
+    # ======================================
+
+    if len(parts) == 0:
+        return result
 
 
-    # subtype
-    if len(parts) >= 2:
-        result["transaction_subtype"] = parts[1]
+    # ======================================
+    # DETECT UPI FAMILY
+    # ======================================
+
+    upi_family = parts[0]
+
+    result["transaction_prefix"] = upi_family
 
 
-    # reference id
-    if len(parts) >= 3:
-        result["reference_id"] = parts[2]
+    # ======================================
+    # UPIAR FORMAT
+    # ======================================
+
+    if upi_family == "UPIAR":
+
+        if len(parts) >= 2:
+            result["reference_id"] = parts[1]
+
+        if len(parts) >= 3:
+            result["transaction_subtype"] = parts[2]
+
+        if len(parts) >= 4:
+            result["entity_name"] = parts[3]
+
+        if len(parts) >= 5:
+
+            result["bank_name"] = parts[4]
+
+            result["parse_quality"] = "HIGH"
 
 
-    # entity
-    if len(parts) >= 4:
-        result["entity_name"] = parts[3]
+    # ======================================
+    # STANDARD UPI FORMAT
+    # ======================================
+
+    else:
+
+        if len(parts) >= 2:
+            result["reference_id"] = parts[1]
+
+        if len(parts) >= 3:
+            result["transaction_subtype"] = parts[2]
+
+        if len(parts) >= 4:
+            result["entity_name"] = parts[3]
+
+        if len(parts) >= 5:
+
+            result["bank_name"] = parts[4]
+
+            result["parse_quality"] = "HIGH"
 
 
-    # UPI ID extraction
+    # ======================================
+    # UPI ID EXTRACTION
+    # ======================================
+
     upi_pattern = r'[\w\.-]+@[\w]+'
 
     match = re.search(
@@ -97,10 +145,14 @@ def parse_neft_transaction(narration):
 
     # entity
     if len(parts) >= 3:
+
         result["entity_name"] = parts[2]
+
+        result["parse_quality"] = "MEDIUM"
 
 
     return result
+
 
 # ======================================
 # IMPS PARSER
@@ -128,10 +180,14 @@ def parse_imps_transaction(narration):
 
     # entity
     if len(parts) >= 4:
+
         result["entity_name"] = parts[3]
+
+        result["parse_quality"] = "MEDIUM"
 
 
     return result
+
 
 # ======================================
 # ATM PARSER
@@ -143,7 +199,10 @@ def parse_atm_transaction(narration):
 
     result["transaction_prefix"] = "ATM"
 
+    result["parse_quality"] = "LOW"
+
     return result
+
 
 # ======================================
 # CHEQUE PARSER
@@ -160,7 +219,10 @@ def parse_cheque_transaction(narration):
 
     # cheque reference
     if len(parts) >= 2:
+
         result["reference_id"] = parts[1]
+
+        result["parse_quality"] = "MEDIUM"
 
 
     return result
