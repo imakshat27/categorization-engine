@@ -1,72 +1,40 @@
-ENTITY_TYPES = {
+from engine.entity_registry import ENTITY_REGISTRY
+from engine.matcher import clean_entity_text, token_match
 
-    # =====================================
-    # TRAVEL
-    # =====================================
-
-    "IRCTC": "TRAVEL",
-
-    "MAKEMYTRIP": "TRAVEL",
-
-    "YATRA": "TRAVEL",
-
-
-    # =====================================
-    # E-COMMERCE
-    # =====================================
-
-    "AMAZON": "E-COMMERCE",
-
-    "FLIPKART": "E-COMMERCE",
-
-
-    # =====================================
-    # INSURANCE
-    # =====================================
-
-    "LIC": "INSURANCE",
-
-
-    # =====================================
-    # RECHARGE
-    # =====================================
-
-    "AIRTEL": "RECHARGE",
-
-    "JIO": "RECHARGE",
-
-
-    # =====================================
-    # UTILITY
-    # =====================================
-
-    "BESCOM": "UTILITY"
-}
 
 def detect_entity_type(entity_name):
+    text = clean_entity_text(entity_name)
+    best = None
 
-    entity_name = entity_name.upper()
+    for entity in ENTITY_REGISTRY:
+        for alias in entity["aliases"]:
+            match = token_match(
+                alias,
+                text,
+                rule_name=f"ENTITY_{entity['canonical']}",
+                source="entity",
+            )
 
+            if not match:
+                continue
 
-    for entity_keyword, entity_type in ENTITY_TYPES.items():
+            if best is None or entity["confidence"] > best["entity_confidence"]:
+                best = {
+                    "entity_type": entity["category"],
+                    "entity_confidence": entity["confidence"],
+                    "matched_entity_rule": entity["canonical"],
+                    "entity_role": entity["role"],
+                    "entity_ambiguity": entity["ambiguity"],
+                }
 
-        if entity_keyword in entity_name:
-
-            return {
-
-                "entity_type": entity_type,
-
-                "entity_confidence": 0.90,
-
-                "matched_entity_rule": entity_keyword
-            }
-
+    if best:
+        return best
 
     return {
-
         "entity_type": "UNKNOWN",
-
         "entity_confidence": 0.0,
-
-        "matched_entity_rule": "NO_ENTITY_MATCH"
+        "matched_entity_rule": "NO_ENTITY_MATCH",
+        "entity_role": "UNKNOWN",
+        "entity_ambiguity": "UNKNOWN",
     }
+

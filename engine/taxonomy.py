@@ -1,0 +1,173 @@
+APPROVED_CATEGORIES = [
+    "ACH BOUNCED CHARGES",
+    "ATM DEPOSIT",
+    "ATM WITHDRAWAL",
+    "AUTO SWEEP",
+    "BANK CHARGES",
+    "CASH DEPOSIT",
+    "CASH WITHDRAWAL",
+    "CHEQUE BOUNCE - NON TECHNICAL",
+    "CHEQUE BOUNCE - TECHNICAL",
+    "CHEQUE CASH WITHDRAWAL",
+    "CHEQUE DEPOSIT",
+    "CHEQUE WITHDRAWAL",
+    "CREDIT CARD PAYMENT",
+    "DEBIT CARD TRANSFER IN",
+    "DEBIT CARD TRANSFER OUT",
+    "DEMAND DRAFT",
+    "E-COMMERCE",
+    "ECS BOUNCED CHARGES",
+    "ELECTRONIC FUND TRANSFER",
+    "FIXED DEPOSIT",
+    "FUEL",
+    "IMPS BOUNCE CHARGES",
+    "IMPS BOUNCE",
+    "INSURANCE",
+    "INTEREST",
+    "INVESTMENTS",
+    "LOAN",
+    "NEFT BOUNCE",
+    "PAYMENT GATEWAY",
+    "RECHARGE",
+    "REFUND OR REVERSAL",
+    "RTGS BOUNCE",
+    "SALARY PAID",
+    "SALARY RECEIVED",
+    "SALARY",
+    "TAX",
+    "TRANSFER IN",
+    "TRANSFER OUT",
+    "TRAVEL",
+    "UTILITY",
+]
+
+
+APPROVED_CATEGORY_SET = set(APPROVED_CATEGORIES)
+
+
+CATEGORY_FAMILIES = {
+    "bounce": {
+        "ACH BOUNCED CHARGES",
+        "ECS BOUNCED CHARGES",
+        "IMPS BOUNCE CHARGES",
+        "IMPS BOUNCE",
+        "NEFT BOUNCE",
+        "RTGS BOUNCE",
+        "CHEQUE BOUNCE - NON TECHNICAL",
+        "CHEQUE BOUNCE - TECHNICAL",
+    },
+    "cash": {
+        "ATM DEPOSIT",
+        "ATM WITHDRAWAL",
+        "CASH DEPOSIT",
+        "CASH WITHDRAWAL",
+        "CHEQUE CASH WITHDRAWAL",
+    },
+    "cheque": {
+        "CHEQUE BOUNCE - NON TECHNICAL",
+        "CHEQUE BOUNCE - TECHNICAL",
+        "CHEQUE CASH WITHDRAWAL",
+        "CHEQUE DEPOSIT",
+        "CHEQUE WITHDRAWAL",
+    },
+    "generic_transfer": {
+        "ELECTRONIC FUND TRANSFER",
+        "TRANSFER IN",
+        "TRANSFER OUT",
+        "DEBIT CARD TRANSFER IN",
+        "DEBIT CARD TRANSFER OUT",
+    },
+    "merchant_intent": {
+        "CREDIT CARD PAYMENT",
+        "E-COMMERCE",
+        "FUEL",
+        "INSURANCE",
+        "LOAN",
+        "PAYMENT GATEWAY",
+        "RECHARGE",
+        "TRAVEL",
+        "UTILITY",
+    },
+}
+
+
+CATEGORY_PRECEDENCE = {
+    "REFUND OR REVERSAL": 1000,
+    "ACH BOUNCED CHARGES": 980,
+    "ECS BOUNCED CHARGES": 980,
+    "IMPS BOUNCE CHARGES": 970,
+    "IMPS BOUNCE": 960,
+    "NEFT BOUNCE": 960,
+    "RTGS BOUNCE": 960,
+    "CHEQUE BOUNCE - NON TECHNICAL": 955,
+    "CHEQUE BOUNCE - TECHNICAL": 955,
+    "BANK CHARGES": 930,
+    "SALARY RECEIVED": 910,
+    "SALARY PAID": 910,
+    "SALARY": 900,
+    "TAX": 890,
+    "INTEREST": 880,
+    "CREDIT CARD PAYMENT": 870,
+    "LOAN": 860,
+    "INSURANCE": 850,
+    "FIXED DEPOSIT": 840,
+    "AUTO SWEEP": 830,
+    "INVESTMENTS": 820,
+    "DEMAND DRAFT": 810,
+    "CHEQUE CASH WITHDRAWAL": 800,
+    "CHEQUE DEPOSIT": 790,
+    "CHEQUE WITHDRAWAL": 790,
+    "ATM DEPOSIT": 780,
+    "ATM WITHDRAWAL": 780,
+    "CASH DEPOSIT": 770,
+    "CASH WITHDRAWAL": 770,
+    "DEBIT CARD TRANSFER IN": 760,
+    "DEBIT CARD TRANSFER OUT": 760,
+    "FUEL": 740,
+    "UTILITY": 730,
+    "RECHARGE": 720,
+    "TRAVEL": 710,
+    "E-COMMERCE": 700,
+    "PAYMENT GATEWAY": 650,
+    "ELECTRONIC FUND TRANSFER": 500,
+    "TRANSFER IN": 420,
+    "TRANSFER OUT": 420,
+}
+
+
+RAIL_CATEGORIES = {
+    "UPI": "ELECTRONIC FUND TRANSFER",
+    "IMPS": "ELECTRONIC FUND TRANSFER",
+    "NEFT": "ELECTRONIC FUND TRANSFER",
+    "RTGS": "ELECTRONIC FUND TRANSFER",
+}
+
+
+FALLBACK_CATEGORY_BY_DIRECTION = {
+    "IN": "TRANSFER IN",
+    "OUT": "TRANSFER OUT",
+    "UNKNOWN": "ELECTRONIC FUND TRANSFER",
+}
+
+
+PARSER_QUALITY_MULTIPLIER = {
+    "HIGH": 1.0,
+    "MEDIUM": 0.92,
+    "LOW": 0.82,
+    "UNKNOWN": 0.78,
+}
+
+
+CONFLICT_PENALTIES = {
+    "movement_direction_conflict": 0.18,
+    "deposit_withdrawal_conflict": 0.14,
+    "parser_low_quality": 0.08,
+    "weak_fallback": 0.16,
+    "rail_entity_ambiguity": 0.08,
+    "processor_entity_ambiguity": 0.10,
+    "competing_hypotheses": 0.08,
+    "entity_category_disagreement": 0.08,
+}
+
+
+REVIEW_CONFIDENCE_THRESHOLD = 0.65

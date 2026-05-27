@@ -106,6 +106,7 @@ if uploaded_file and sheet_name:
 
                     "Transaction Prefix",
                     "Transaction Subtype",
+                    "Protocol Family",
 
                     "Reference ID",
 
@@ -113,7 +114,9 @@ if uploaded_file and sheet_name:
                     "Bank Name",
 
                     "UPI ID",
-                    "UPI Handle"
+                    "UPI Handle",
+                    "Parser Rule",
+                    "Parser Confidence"
                 ]
             ]
 
@@ -141,6 +144,13 @@ if uploaded_file and sheet_name:
                     "UPI ID",
                     "UPI Handle",
                     "Parse Quality",
+                    "Protocol Family",
+                    "Parser Rule",
+                    "Parser Confidence",
+                    "Instrument Type",
+                    "Intent Tags",
+                    "Movement Tags",
+                    "Bank Family",
                     "Merchant",
 
                     "Bounce Flag",
@@ -168,6 +178,11 @@ if uploaded_file and sheet_name:
                     "Confidence",
                     "Decision Path",
                     "Conflicts",
+                    "Ranked Candidates",
+                    "Alternative Categories",
+                    "Review Required",
+                    "Review Reason",
+                    "Evidence Summary",
                     "Category",
                     "Matched Rule",
                 ]

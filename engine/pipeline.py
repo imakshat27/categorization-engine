@@ -1,291 +1,101 @@
+from engine.classifier import classify_transaction
 from engine.normalizer import normalize_text
+from engine.semantic import build_semantic_facts, detect_direction
 
-from engine.classifier import (
-    detect_direction,
-    detect_mode,
-    detect_merchant,
-    classify_transaction
-)
 
-from engine.entity_intelligence import (
-    detect_entity_type
-)
+def _protocol(facts, key, default="UNKNOWN"):
+    return facts.get("protocol", {}).get(key, default)
 
-from engine.entity_intelligence import (
-    detect_entity_type
-)
 
-from engine.signals import (
-    detect_bounce,
-    detect_charge,
-    detect_reversal,
-    detect_salary,
-    detect_tax,
-    detect_cash,
-    detect_deposit,
-    detect_withdrawal,
-    detect_atm,
-    detect_cheque,
-    detect_investment,
-    detect_insurance,
-    detect_recharge,
-    detect_travel,
-    detect_utility,
-    detect_loan
-)
+def _entity(facts, key, default="UNKNOWN"):
+    return facts.get("entity", {}).get(key, default)
 
-from engine.parser import parse_transaction
+
+def _movement(facts, key, default="UNKNOWN"):
+    return facts.get("movement", {}).get(key, default)
+
+
+def _intent_tags(facts):
+    return set(facts.get("intent", {}).get("tags", []))
+
+
+def _movement_tags(facts):
+    return set(facts.get("movement", {}).get("tags", []))
+
+
+def _join(items):
+    return " | ".join(str(item) for item in items if item not in (None, ""))
+
+
+def _format_candidates(candidates):
+    return _join(
+        f"{candidate['category']}:{candidate['score']}"
+        for candidate in candidates
+    )
 
 
 def process_transactions(df):
-
-    # =========================
-    # NORMALIZATION
-    # =========================
-
-    df["Normalized Narration"] = df[
-        "Narration"
-    ].apply(normalize_text)
-
-
-    # =========================
-    # DIRECTION DETECTION
-    # =========================
-
-    df["Direction"] = df.apply(
-        detect_direction,
-        axis=1
-    )
-
-
-    # =========================
-    # MODE DETECTION
-    # =========================
-
-    mode_results = df[
-        "Normalized Narration"
-    ].apply(detect_mode)
-
-
-    df["Mode"] = mode_results.apply(
-        lambda x: x["mode"]
-    )
-
-
-    # =========================
-    # MERCHANT DETECTION
-    # =========================
-
-    merchant_results = df[
-        "Normalized Narration"
-    ].apply(detect_merchant)
-
-
-    df["Merchant"] = merchant_results.apply(
-        lambda x: x["merchant"]
-    )
-
-
-    # =========================
-    # TRANSACTION PARSING
-    # =========================
-
-    parse_results = df.apply(
-        parse_transaction,
-        axis=1
-    )
-
-
-    df["Transaction Prefix"] = parse_results.apply(
-        lambda x: x["transaction_prefix"]
-    )
-
-
-    df["Transaction Subtype"] = parse_results.apply(
-        lambda x: x["transaction_subtype"]
-    )
-
-
-    df["Reference ID"] = parse_results.apply(
-        lambda x: x["reference_id"]
-    )
-
-
-    df["Entity Name"] = parse_results.apply(
-        lambda x: x["entity_name"]
-    )
-
-
-    df["Bank Name"] = parse_results.apply(
-        lambda x: x["bank_name"]
-    )
-
-
-    df["UPI ID"] = parse_results.apply(
-        lambda x: x["upi_id"]
-    )
-
-
-    df["UPI Handle"] = parse_results.apply(
-        lambda x: x["upi_handle"]
-    )
-
-    df["Parse Quality"] = parse_results.apply(
-        lambda x: x["parse_quality"]
-    )
-
-    entity_results = df["Entity Name"].apply(
-        detect_entity_type
-    )
-
-    # =========================
-    # ENTITY INTELLIGENCE
-    # =========================
-
-    entity_results = df[
-        "Entity Name"
-    ].apply(detect_entity_type)
-
-
-    df["Entity Type"] = entity_results.apply(
-        lambda x: x["entity_type"]
-    )
-
-
-    df["Entity Confidence"] = entity_results.apply(
-        lambda x: x["entity_confidence"]
-    )
-
-
-    df["Matched Entity Rule"] = entity_results.apply(
-        lambda x: x["matched_entity_rule"]
-    )
-
-    # =========================
-    # SIGNAL EXTRACTION
-    # =========================
-
-    df["Bounce Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_bounce)
-
-
-    df["Charge Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_charge)
-
-
-    df["Reversal Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_reversal)
-
-
-    df["Salary Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_salary)
-
-
-    df["Tax Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_tax)
-
-
-    df["Cash Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_cash)
-
-
-    df["Deposit Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_deposit)
-
-
-    df["Withdrawal Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_withdrawal)
-
-
-    df["ATM Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_atm)
-
-
-    df["Cheque Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_cheque)
-
-
-    df["Investment Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_investment)
-
-
-    df["Insurance Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_insurance)
-
-
-    df["Recharge Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_recharge)
-
-
-    df["Travel Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_travel)
-
-
-    df["Utility Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_utility)
-
-
-    df["Loan Flag"] = df[
-        "Normalized Narration"
-    ].apply(detect_loan)
-
-    
-    # =========================
-    # CATEGORY CLASSIFICATION
-    # =========================
-
-    classification_results = df.apply(
-        classify_transaction,
-        axis=1
-    )
-
-
-    df["Category"] = classification_results.apply(
-        lambda x: x["category"]
-    )
-
-
-    df["Matched Rule"] = classification_results.apply(
-        lambda x: x["matched_rule"]
-    )
-
-    
-
-    # =========================
-    # CONFIDENCE SCORING
-    # =========================
-
-    df["Confidence"] = classification_results.apply(
-        lambda x: x.get("confidence", 0.0)
-    )
-
-
-    df["Decision Path"] = classification_results.apply(
-        lambda x: " | ".join(
-            x.get("decision_path", [])
-        )
-    )
-
-
-    df["Conflicts"] = classification_results.apply(
-        lambda x: " | ".join(
-            x.get("conflicts", [])
-        )
-    )
+    df["Normalized Narration"] = df["Narration"].apply(normalize_text)
+
+    df["Direction"] = df.apply(detect_direction, axis=1)
+
+    semantic_results = df.apply(build_semantic_facts, axis=1)
+    df["Semantic Facts"] = semantic_results
+
+    df["Mode"] = semantic_results.apply(lambda facts: _protocol(facts, "rail"))
+    df["Protocol Family"] = semantic_results.apply(lambda facts: _protocol(facts, "family"))
+    df["Parser Rule"] = semantic_results.apply(lambda facts: _protocol(facts, "parser_rule"))
+    df["Parser Confidence"] = semantic_results.apply(lambda facts: _protocol(facts, "parser_confidence", 0.0))
+
+    df["Transaction Prefix"] = semantic_results.apply(lambda facts: _protocol(facts, "transaction_prefix"))
+    df["Transaction Subtype"] = semantic_results.apply(lambda facts: _protocol(facts, "subtype"))
+    df["Reference ID"] = semantic_results.apply(lambda facts: _protocol(facts, "reference_id"))
+    df["Entity Name"] = semantic_results.apply(lambda facts: _protocol(facts, "counterparty"))
+    df["Bank Name"] = semantic_results.apply(lambda facts: _protocol(facts, "bank"))
+    df["UPI ID"] = semantic_results.apply(lambda facts: _protocol(facts, "upi_id"))
+    df["UPI Handle"] = semantic_results.apply(lambda facts: _protocol(facts, "handle"))
+    df["Parse Quality"] = semantic_results.apply(lambda facts: _protocol(facts, "parse_quality"))
+
+    df["Merchant"] = semantic_results.apply(lambda facts: _entity(facts, "canonical"))
+    df["Entity Type"] = semantic_results.apply(lambda facts: _entity(facts, "category"))
+    df["Entity Role"] = semantic_results.apply(lambda facts: _entity(facts, "role"))
+    df["Entity Confidence"] = semantic_results.apply(lambda facts: _entity(facts, "confidence", 0.0))
+    df["Matched Entity Rule"] = semantic_results.apply(lambda facts: _entity(facts, "matched_alias"))
+
+    df["Instrument Type"] = semantic_results.apply(lambda facts: _movement(facts, "instrument_type"))
+    df["Intent Tags"] = semantic_results.apply(lambda facts: _join(facts.get("intent", {}).get("tags", [])))
+    df["Movement Tags"] = semantic_results.apply(lambda facts: _join(facts.get("movement", {}).get("tags", [])))
+    df["Bank Family"] = semantic_results.apply(lambda facts: facts.get("bank_family", {}).get("family", "UNKNOWN"))
+
+    df["Bounce Flag"] = semantic_results.apply(lambda facts: "bounce" in _intent_tags(facts))
+    df["Charge Flag"] = semantic_results.apply(lambda facts: "charge" in _intent_tags(facts))
+    df["Reversal Flag"] = semantic_results.apply(lambda facts: "reversal" in _intent_tags(facts))
+    df["Salary Flag"] = semantic_results.apply(lambda facts: "salary" in _intent_tags(facts))
+    df["Tax Flag"] = semantic_results.apply(lambda facts: "tax" in _intent_tags(facts))
+    df["Cash Flag"] = semantic_results.apply(lambda facts: "cash" in _movement_tags(facts))
+    df["Deposit Flag"] = semantic_results.apply(lambda facts: "deposit" in _movement_tags(facts))
+    df["Withdrawal Flag"] = semantic_results.apply(lambda facts: "withdrawal" in _movement_tags(facts))
+    df["ATM Flag"] = semantic_results.apply(lambda facts: "atm" in _movement_tags(facts))
+    df["Cheque Flag"] = semantic_results.apply(lambda facts: "cheque" in _movement_tags(facts))
+    df["Investment Flag"] = semantic_results.apply(lambda facts: "investment" in _intent_tags(facts))
+    df["Insurance Flag"] = semantic_results.apply(lambda facts: "insurance" in _intent_tags(facts))
+    df["Recharge Flag"] = semantic_results.apply(lambda facts: "recharge" in _intent_tags(facts))
+    df["Travel Flag"] = semantic_results.apply(lambda facts: "travel" in _intent_tags(facts))
+    df["Utility Flag"] = semantic_results.apply(lambda facts: "utility" in _intent_tags(facts))
+    df["Loan Flag"] = semantic_results.apply(lambda facts: "loan" in _intent_tags(facts))
+
+    classification_results = df.apply(classify_transaction, axis=1)
+
+    df["Category"] = classification_results.apply(lambda result: result["category"])
+    df["Confidence"] = classification_results.apply(lambda result: result["confidence"])
+    df["Decision Path"] = classification_results.apply(lambda result: _join(result.get("decision_path", [])))
+    df["Conflicts"] = classification_results.apply(lambda result: _join(result.get("conflicts", [])))
+    df["Matched Rule"] = classification_results.apply(lambda result: result["matched_rule"])
+    df["Ranked Candidates"] = classification_results.apply(lambda result: _format_candidates(result.get("ranked_candidates", [])))
+    df["Alternative Categories"] = classification_results.apply(lambda result: _format_candidates(result.get("alternative_categories", [])))
+    df["Review Required"] = classification_results.apply(lambda result: result.get("review_required", False))
+    df["Review Reason"] = classification_results.apply(lambda result: result.get("review_reason", ""))
+    df["Evidence Summary"] = classification_results.apply(lambda result: _join(result.get("evidence_summary", [])))
 
     return df
+
