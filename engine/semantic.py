@@ -19,7 +19,7 @@ RAIL_TERMS = {
     "ATM": ["ATM", "NWD", "ATW"],
     "CHEQUE": ["CHQ", "CHEQUE", "CLG", "MICR"],
     "ECS": ["ECS"],
-    "ACH": ["ACH"],
+    "ACH": ["ACH", "ACHD"],
     "NACH": ["NACH"],
 }
 
@@ -54,7 +54,7 @@ INTENT_RULES = {
         "regex": [],
     },
     "investment": {
-        "terms": ["INVESTMENT", "INVESTMENTS", "MUTUAL FUND", "SIP", "DEMAT"],
+        "terms": ["INVESTMENT", "INVESTMENTS", "MUTUAL FUND", "SIP", "DEMAT", "FINANCE"],
         "regex": [],
     },
     "insurance": {
@@ -63,7 +63,7 @@ INTENT_RULES = {
     },
     "recharge": {
         "terms": ["RECHARGE", "PREPAID", "POSTPAID"],
-        "regex": [],
+        "regex": [r"\b[A-Z]*RECHARGE\b"],
     },
     "travel": {
         "terms": ["IRCTC", "MAKEMYTRIP", "YATRA", "TRAVEL"],
@@ -74,8 +74,8 @@ INTENT_RULES = {
         "regex": [],
     },
     "loan": {
-        "terms": ["LOAN", "EMI"],
-        "regex": [],
+        "terms": ["LOAN", "EMI", "FINANCE"],
+        "regex": [r"\bEMI\d+"],
     },
     "fuel": {
         "terms": ["FUEL", "PETROL", "DIESEL", "FILLING", "FILLINGS"],
@@ -98,7 +98,7 @@ INTENT_RULES = {
         "regex": [r"(?<![A-Z0-9])DD(?![A-Z0-9])"],
     },
     "direct_debit": {
-        "terms": ["DIRECT DEBIT", "NACH", "ECS", "ACH"],
+        "terms": ["DIRECT DEBIT", "NACH", "ECS", "ACH", "ACHD"],
         "regex": [],
     },
 }

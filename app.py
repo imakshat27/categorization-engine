@@ -130,63 +130,74 @@ if uploaded_file and sheet_name:
 
         st.subheader("Classification Output")
 
+        classification_columns = [
+            "Narration",
+            "Normalized Narration",
+
+            "Direction",
+            "Mode",
+
+            "Entity Name",
+            "UPI ID",
+            "UPI Handle",
+            "Parse Quality",
+            "Protocol Family",
+            "Parser Rule",
+            "Parser Confidence",
+            "Instrument Type",
+            "Intent Tags",
+            "Movement Tags",
+            "Bank Family",
+            "Merchant",
+
+            "Bounce Flag",
+            "Charge Flag",
+            "Reversal Flag",
+            "Salary Flag",
+            "Tax Flag",
+            "Cash Flag",
+            "Deposit Flag",
+            "Withdrawal Flag",
+            "ATM Flag",
+            "Cheque Flag",
+            "Investment Flag",
+            "Insurance Flag",
+            "Recharge Flag",
+            "Travel Flag",
+            "Utility Flag",
+            "Loan Flag",
+            "Entity Type",
+            "Entity Confidence",
+            "Transaction Prefix",
+            "Transaction Subtype",
+            "Reference ID",
+            "Bank Name",
+            "Confidence",
+            "Decision Path",
+            "Conflicts",
+            "Ranked Candidates",
+            "Alternative Categories",
+            "Review Required",
+            "Review Reason",
+            "Evidence Summary",
+            "Category",
+            "Matched Rule",
+        ]
+
+        if "Old Category" in processed_df.columns:
+
+            category_index = classification_columns.index(
+                "Category"
+            )
+
+            classification_columns.insert(
+                category_index + 1,
+                "Old Category"
+            )
+
         st.dataframe(
 
-            processed_df[
-                [
-                    "Narration",
-                    "Normalized Narration",
-
-                    "Direction",
-                    "Mode",
-
-                    "Entity Name",
-                    "UPI ID",
-                    "UPI Handle",
-                    "Parse Quality",
-                    "Protocol Family",
-                    "Parser Rule",
-                    "Parser Confidence",
-                    "Instrument Type",
-                    "Intent Tags",
-                    "Movement Tags",
-                    "Bank Family",
-                    "Merchant",
-
-                    "Bounce Flag",
-                    "Charge Flag",
-                    "Reversal Flag",
-                    "Salary Flag",
-                    "Tax Flag",
-                    "Cash Flag",
-                    "Deposit Flag",
-                    "Withdrawal Flag",
-                    "ATM Flag",
-                    "Cheque Flag",
-                    "Investment Flag",
-                    "Insurance Flag",
-                    "Recharge Flag",
-                    "Travel Flag",
-                    "Utility Flag",
-                    "Loan Flag",
-                    "Entity Type",
-                    "Entity Confidence",
-                    "Transaction Prefix",
-                    "Transaction Subtype",
-                    "Reference ID",
-                    "Bank Name",
-                    "Confidence",
-                    "Decision Path",
-                    "Conflicts",
-                    "Ranked Candidates",
-                    "Alternative Categories",
-                    "Review Required",
-                    "Review Reason",
-                    "Evidence Summary",
-                    "Category",
-                    "Matched Rule",
-                ]
-            ]
+            processed_df[classification_columns]
 
         )
 

@@ -1,7 +1,7 @@
 ENTITY_REGISTRY = [
     {
         "canonical": "AMAZON",
-        "aliases": ["AMAZON", "AMAZON PAY"],
+        "aliases": ["AMAZON", "AMAZON PAY", "AMZN"],
         "category": "E-COMMERCE",
         "role": "merchant",
         "confidence": 0.88,
@@ -136,6 +136,22 @@ ENTITY_REGISTRY = [
         "ambiguity": "MEDIUM",
     },
     {
+        "canonical": "HDB FINANCIAL SERVICES",
+        "aliases": ["HDB FINANCIAL SERVICES", "HDBFINANCIALSERVIC", "HDB FINANCIAL", "HDBFIN"],
+        "category": "LOAN",
+        "role": "lender",
+        "confidence": 0.92,
+        "ambiguity": "LOW",
+    },
+    {
+        "canonical": "GROWTH SOURCE FINANCE",
+        "aliases": ["GROWTH SOURCE FINANCE", "GROWTHSOURCEFINANC", "GROWTH SOURCE FINANC"],
+        "category": "LOAN",
+        "role": "lender",
+        "confidence": 0.90,
+        "ambiguity": "LOW",
+    },
+    {
         "canonical": "CRED",
         "aliases": ["CRED", "PAID VIA CRED", "PAIDVIACRED"],
         "category": "CREDIT CARD PAYMENT",
@@ -192,4 +208,3 @@ ENTITY_REGISTRY = [
         "ambiguity": "MEDIUM",
     },
 ]
-

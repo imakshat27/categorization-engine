@@ -38,6 +38,11 @@ class SemanticEngineTests(unittest.TestCase):
         self.assertEqual(imps["family"], "IMPS_SENT")
         self.assertEqual(imps["reference_id"], "421717626944")
 
+        achd = parse_transaction({"Normalized Narration": "ACHD/HDBFINANCIALSERVIC/HDBFIN90DIHK"})
+        self.assertEqual(achd["rail"], "ACH")
+        self.assertEqual(achd["family"], "ACH_DEBIT")
+        self.assertEqual(achd["counterparty"], "HDBFINANCIALSERVIC")
+
     def test_generic_rail_becomes_electronic_fund_transfer(self):
         result = classify_one("UPI/RRN 412288007493/UPI", debits=240.9)
         self.assertEqual(result["Category"], "ELECTRONIC FUND TRANSFER")
@@ -62,6 +67,19 @@ class SemanticEngineTests(unittest.TestCase):
         self.assertEqual(result["Category"], "ELECTRONIC FUND TRANSFER")
         self.assertNotIn("processor_entity_ambiguity", result["Conflicts"])
 
+    def test_achd_finance_counterparties_classify_as_loans(self):
+        examples = [
+            "ACHD/GROWTHSOURCEFINANC/020520240718",
+            "ACHD/HDBFINANCIALSERVIC/HDBFIN90DIHK",
+        ]
+
+        for narration in examples:
+            with self.subTest(narration=narration):
+                result = classify_one(narration, debits=1000)
+                self.assertEqual(result["Mode"], "ACH")
+                self.assertEqual(result["Protocol Family"], "ACH_DEBIT")
+                self.assertEqual(result["Category"], "LOAN")
+
     def test_old_category_column_is_not_semantic_truth(self):
         result = classify_one(
             "UPI/IRCTC/123456789/NA",
@@ -70,6 +88,7 @@ class SemanticEngineTests(unittest.TestCase):
             Remarks="IRCTC",
         )
         self.assertEqual(result["Category"], "TRAVEL")
+        self.assertEqual(result["Old Category"], "TRANSFER OUT")
 
     def test_fallback_stays_inside_approved_taxonomy(self):
         result = classify_one("UNRECOGNIZED LOCAL ENTRY", debits=123)
@@ -130,4 +149,3 @@ class SemanticEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

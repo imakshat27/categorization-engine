@@ -35,6 +35,9 @@ def _format_candidates(candidates):
 
 
 def process_transactions(df):
+    if "Category" in df.columns and "Old Category" not in df.columns:
+        df["Old Category"] = df["Category"]
+
     df["Normalized Narration"] = df["Narration"].apply(normalize_text)
 
     df["Direction"] = df.apply(detect_direction, axis=1)
@@ -98,4 +101,3 @@ def process_transactions(df):
     df["Evidence Summary"] = classification_results.apply(lambda result: _join(result.get("evidence_summary", [])))
 
     return df
-

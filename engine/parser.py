@@ -275,6 +275,28 @@ def parse_rtgs_transaction(narration):
     return _finalize(result)
 
 
+def parse_ach_transaction(narration):
+    result = empty_parser_result()
+    parts = [part.strip() for part in narration.split("/") if part.strip()]
+
+    result["rail"] = "ACH"
+    result["transaction_prefix"] = parts[0] if parts else "ACH"
+    result["family"] = "ACH_DEBIT" if result["transaction_prefix"] == "ACHD" else "ACH"
+    result["parser_rule"] = "ACHD_SLASH" if result["transaction_prefix"] == "ACHD" else "ACH_TEXT"
+
+    if result["transaction_prefix"] == "ACHD":
+        result["transaction_subtype"] = "DEBIT"
+
+    if len(parts) >= 2:
+        result["entity_name"] = clean_entity_text(parts[1])
+
+    if len(parts) >= 3:
+        result["reference_id"] = clean_entity_text(parts[2])
+
+    _set_quality(result, "HIGH" if len(parts) >= 3 else "MEDIUM", 0.84)
+    return _finalize(result)
+
+
 def parse_atm_transaction(narration):
     result = empty_parser_result()
     result["rail"] = "ATM"
@@ -308,7 +330,7 @@ def parse_generic_transaction(narration):
     result = empty_parser_result()
     result["entity_name"] = clean_entity_text(narration)
 
-    if re.search(r"\bACH\b", narration, re.IGNORECASE):
+    if re.search(r"\bACHD\b|\bACH\b", narration, re.IGNORECASE):
         result.update({"rail": "ACH", "transaction_prefix": "ACH", "family": "ACH", "parser_rule": "ACH_TEXT"})
         _set_quality(result, "MEDIUM", 0.66)
     elif re.search(r"\bECS\b|\bNACH\b", narration, re.IGNORECASE):
@@ -341,6 +363,9 @@ def parse_transaction(row):
 
     if re.search(r"\bRTGS\b", narration, re.IGNORECASE):
         return parse_rtgs_transaction(narration)
+
+    if re.search(r"\bACHD\b|\bACH\b", narration, re.IGNORECASE):
+        return parse_ach_transaction(narration)
 
     if re.search(r"\bATM\b|\bATM\s+WDL\b|\bNWD\b|\bATW\b", narration, re.IGNORECASE):
         return parse_atm_transaction(narration)
