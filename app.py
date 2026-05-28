@@ -1,5 +1,9 @@
 import streamlit as st
 
+    DEFAULT_OLLAMA_MODEL,
+from engine.ai_refinement import (
+    refine_transactions,
+)
 from engine.loader import load_transactions
 from engine.pipeline import process_transactions
 
@@ -200,6 +204,63 @@ if uploaded_file and sheet_name:
             processed_df[classification_columns]
 
         )
+
+
+        # =========================
+        # AI REFINEMENT
+        # =========================
+
+        st.subheader("AI Refinement")
+
+        refinement_threshold = st.slider(
+            "Confidence threshold",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.65,
+            step=0.01
+        )
+
+        refinement_model = st.text_input(
+            "Ollama model",
+            value=DEFAULT_OLLAMA_MODEL
+        )
+
+        refinement_max_rows = st.number_input(
+            "Max rows to refine",
+            min_value=1,
+            max_value=500,
+            value=25,
+            step=1
+        )
+
+        include_old_category_disagreement = st.checkbox(
+            "Include old-vs-new category disagreements",
+            value=True
+        )
+
+        if st.button("AI Refinement"):
+
+            with st.spinner("Running advisory AI refinement..."):
+
+                refinement_results = refine_transactions(
+                    processed_df,
+                    threshold=refinement_threshold,
+                    model=refinement_model,
+                    max_rows=int(refinement_max_rows),
+                    include_old_category_disagreement=include_old_category_disagreement
+                )
+
+            if refinement_results:
+
+                st.dataframe(
+                    refinement_results
+                )
+
+            else:
+
+                st.info(
+                    "No rows matched the AI refinement routing criteria."
+                )
 
     except Exception as e:
 

@@ -45,6 +45,78 @@ APPROVED_CATEGORIES = [
 APPROVED_CATEGORY_SET = set(APPROVED_CATEGORIES)
 
 
+TAXONOMY_VERSION = "2026-05-28.1"
+CATEGORY_DEFINITION_VERSION = "2026-05-28.1"
+VALIDATOR_VERSION = "2026-05-28.1"
+
+
+CATEGORY_DEFINITIONS = {
+    "ACH BOUNCED CHARGES": "ACH mandate bounce or return charges.",
+    "ATM DEPOSIT": "Cash deposited through an ATM or automated cash deposit channel.",
+    "ATM WITHDRAWAL": "Cash withdrawn through ATM or ATM-like withdrawal channel.",
+    "AUTO SWEEP": "Automatic sweep movement between operative balance and linked deposit/sweep facility.",
+    "BANK CHARGES": "Bank fees, service charges, rental charges, throughput charges, and transaction charges.",
+    "CASH DEPOSIT": "Physical cash deposited into the account.",
+    "CASH WITHDRAWAL": "Physical cash withdrawn from the account.",
+    "CHEQUE BOUNCE - NON TECHNICAL": "Cheque return due to funds, stop payment, account status, or other non-technical reason.",
+    "CHEQUE BOUNCE - TECHNICAL": "Cheque return due to technical reason such as signature, image, MICR, date, or alteration issue.",
+    "CHEQUE CASH WITHDRAWAL": "Cheque used to withdraw cash, usually self/cash cheque.",
+    "CHEQUE DEPOSIT": "Cheque or clearing instrument credited into the account.",
+    "CHEQUE WITHDRAWAL": "Cheque or clearing instrument debited from the account.",
+    "CREDIT CARD PAYMENT": "Payment toward a credit card bill or card repayment app.",
+    "DEBIT CARD TRANSFER IN": "Incoming reversal/credit/refund through debit card or card network.",
+    "DEBIT CARD TRANSFER OUT": "Outgoing debit card, POS, or card network transaction.",
+    "DEMAND DRAFT": "Demand draft issue, purchase, cancellation, or related charge.",
+    "E-COMMERCE": "Purchase or settlement involving an e-commerce merchant or online marketplace.",
+    "ECS BOUNCED CHARGES": "ECS/NACH debit bounce or mandate return charges.",
+    "ELECTRONIC FUND TRANSFER": "Generic UPI, IMPS, NEFT, RTGS, or other electronic rail transfer with no stronger semantic intent.",
+    "FIXED DEPOSIT": "Fixed deposit booking, sweep deposit, premature proceeds, renewal, or FD-linked movement.",
+    "FUEL": "Fuel, petrol, diesel, filling station, or petroleum merchant transaction.",
+    "IMPS BOUNCE CHARGES": "IMPS bounce or return charge.",
+    "IMPS BOUNCE": "IMPS bounce or returned IMPS movement without explicit charge semantics.",
+    "INSURANCE": "Insurance, pension-premium, insurer, policy, or premium payment.",
+    "INTEREST": "Interest credit or debit.",
+    "INVESTMENTS": "Investment, SIP, mutual fund, demat, brokerage, or investment platform transaction.",
+    "LOAN": "Loan EMI, lender/NBFC repayment, loan disbursement, or loan-related debit.",
+    "NEFT BOUNCE": "NEFT return or bounce.",
+    "PAYMENT GATEWAY": "Payment processor, aggregator, wallet, or gateway settlement where processor role is the semantic intent.",
+    "RECHARGE": "Mobile, telecom, prepaid, postpaid, DTH, or recharge transaction.",
+    "REFUND OR REVERSAL": "Refund, reversal, failed transaction return, or original-RRN reversal.",
+    "RTGS BOUNCE": "RTGS return or bounce.",
+    "SALARY PAID": "Salary, payroll, wages, or staff payment debited from the account.",
+    "SALARY RECEIVED": "Salary, payroll, or wages credited into the account.",
+    "SALARY": "Salary or payroll transaction where direction is unavailable.",
+    "TAX": "Tax, GST, TDS, income tax, statutory levy, or government tax payment.",
+    "TRANSFER IN": "Incoming non-rail/manual/internal transfer without stronger semantic intent.",
+    "TRANSFER OUT": "Outgoing non-rail/manual/internal transfer without stronger semantic intent.",
+    "TRAVEL": "Travel, railway, airline, hotel, ride, or travel-platform transaction.",
+    "UTILITY": "Bill, rent, electricity, water, gas, broadband, or other utility-style payment.",
+}
+
+
+CATEGORY_COMPATIBILITY_RULES = {
+    "ATM DEPOSIT": {"direction": {"IN"}, "requires_any": {"movement_tags": {"atm"}}},
+    "ATM WITHDRAWAL": {"direction": {"OUT"}, "requires_any": {"movement_tags": {"atm"}}},
+    "CASH DEPOSIT": {"direction": {"IN"}},
+    "CASH WITHDRAWAL": {"direction": {"OUT"}},
+    "CHEQUE CASH WITHDRAWAL": {"direction": {"OUT"}, "requires_any": {"movement_tags": {"cheque", "cash"}}},
+    "CHEQUE DEPOSIT": {"direction": {"IN"}, "requires_any": {"movement_tags": {"cheque"}}},
+    "CHEQUE WITHDRAWAL": {"direction": {"OUT"}, "requires_any": {"movement_tags": {"cheque"}}},
+    "DEBIT CARD TRANSFER IN": {"direction": {"IN"}, "requires_any": {"movement_tags": {"debit_card"}}},
+    "DEBIT CARD TRANSFER OUT": {"direction": {"OUT"}, "requires_any": {"movement_tags": {"debit_card"}}},
+    "SALARY PAID": {"direction": {"OUT"}},
+    "SALARY RECEIVED": {"direction": {"IN"}},
+    "TRANSFER IN": {"direction": {"IN"}},
+    "TRANSFER OUT": {"direction": {"OUT"}},
+    "IMPS BOUNCE": {"rail": {"IMPS"}},
+    "IMPS BOUNCE CHARGES": {"rail": {"IMPS"}},
+    "NEFT BOUNCE": {"rail": {"NEFT"}},
+    "RTGS BOUNCE": {"rail": {"RTGS"}},
+    "ACH BOUNCED CHARGES": {"rail": {"ACH"}},
+    "ECS BOUNCED CHARGES": {"rail": {"ECS", "NACH"}},
+}
+
+
 CATEGORY_FAMILIES = {
     "bounce": {
         "ACH BOUNCED CHARGES",

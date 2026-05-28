@@ -4,7 +4,7 @@ Deterministic semantic classification for real-world banking transactions.
 
 This project is a financial transaction intelligence engine for BFSI workflows. It classifies noisy bank statement narrations into a fixed taxonomy of transaction categories using protocol-aware parsing, entity intelligence, semantic evidence, ranked hypotheses, deterministic confidence modeling, and explainable provenance.
 
-The system is intentionally not an LLM-first classifier. AI validation is deferred until deterministic semantic coverage and evidence scoring are stable.
+The system is intentionally not an LLM-first classifier. AI refinement is advisory and runs only after deterministic semantic classification.
 
 ---
 
@@ -56,7 +56,7 @@ The deterministic engine is the foundation. It performs the heavy lifting:
 - hypothesis scoring
 - confidence modeling
 
-AI should not be the primary classifier. Future AI integration should only validate, explain, and resolve low-confidence or ambiguous deterministic outputs.
+AI should not be the primary classifier. The AI refinement layer should only validate low-confidence, conflicted, or ambiguous deterministic outputs.
 
 ### Structured Facts Before Classification
 
@@ -1122,6 +1122,38 @@ venv/bin/python -m compileall engine tests
 
 ---
 
+## AI Refinement
+
+AI refinement is optional, stateless, and advisory.
+
+The Streamlit app exposes an `AI Refinement` button after deterministic classification. It routes only selected rows to the local model:
+
+- low confidence
+- review required
+- conflicts
+- optional old-vs-new category disagreement
+
+The deterministic table is not overwritten. AI results appear in a separate refinement table.
+
+Current local model target:
+
+```text
+Ollama qwen2.5:7b
+```
+
+The refinement layer uses:
+
+- versioned compressed semantic payloads
+- versioned taxonomy/category definitions
+- versioned prompt templates
+- strict AI output schema
+- centralized deterministic validation
+- replayable JSONL logs in `output/ai_refinement_logs.jsonl`
+
+Invalid AI output is quarantined and excluded from accepted refinement results.
+
+---
+
 ## Processing Data Programmatically
 
 Example:
@@ -1221,32 +1253,33 @@ Examples that should lower confidence:
 - processor/channel ambiguity
 - contradictory movement facts
 
-### AI Remains Deferred
+### AI Refinement Layer
 
-Future AI should receive structured context like:
+The advisory AI refinement layer receives compact semantic payloads like:
 
 ```json
 {
+  "semantic_payload_version": "2026-05-28.1",
   "narration": "UPI/SUPER FILLINGS/425547609685/NA",
-  "protocol": {
+  "semantic_summary": {
     "rail": "UPI",
-    "family": "UPI_SLASH"
+    "protocol_family": "UPI_SLASH",
+    "direction": "OUT",
+    "entity_category": "FUEL",
+    "intent_tags": ["fuel"]
   },
-  "entity": {
-    "canonical": "SUPER FILLINGS",
-    "category": "FUEL"
+  "deterministic": {
+    "category": "FUEL",
+    "confidence": 0.88
   },
-  "movement": {
-    "direction": "OUT"
-  },
-  "current_category": "FUEL",
-  "confidence": 0.88,
-  "conflicts": ["rail_entity_ambiguity"],
-  "alternatives": ["ELECTRONIC FUND TRANSFER"]
+  "candidates": ["FUEL", "ELECTRONIC FUND TRANSFER"],
+  "major_conflicts": ["rail_entity_ambiguity"]
 }
 ```
 
-AI should validate and explain. It should not replace deterministic extraction.
+AI should return structured advisory output such as `NO_CHANGE` or `SUGGEST_CHANGE`. It should not replace deterministic extraction or overwrite the deterministic `Category`.
+
+The current local prototype target is Ollama with `qwen2.5:7b`.
 
 ---
 
@@ -1324,4 +1357,3 @@ venv/bin/python -m compileall engine tests
 ```
 
 The current tests cover representative paths for all 40 approved categories.
-
