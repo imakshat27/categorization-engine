@@ -1,5 +1,5 @@
 SEMANTIC_PAYLOAD_VERSION = "2026-05-28.1"
-PROMPT_TEMPLATE_VERSION = "2026-05-28.1"
+PROMPT_TEMPLATE_VERSION = "2026-06-01.1"
 AI_OUTPUT_SCHEMA_VERSION = "2026-05-28.1"
 DETERMINISTIC_ENGINE_VERSION = "semantic-engine-2026-05-28.1"
 
@@ -36,4 +36,3 @@ REQUIRED_AI_FIELDS = {
     "recommended_deterministic_improvement",
     "ai_confidence_advisory",
 }
-

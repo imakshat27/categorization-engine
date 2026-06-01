@@ -1,8 +1,9 @@
 import streamlit as st
-
-    DEFAULT_OLLAMA_MODEL,
-from engine.ai_refinement import (
-    refine_transactions,
+# from engine.ai_refinement import DEFAULT_OLLAMA_MODEL, refine_transactions
+from engine.huggingface_refinement import (
+    DEFAULT_HUGGINGFACE_MODEL,
+    HUGGINGFACE_MODEL_OPTIONS,
+    refine_transactions_with_huggingface,
 )
 from engine.loader import load_transactions
 from engine.pipeline import process_transactions
@@ -207,59 +208,157 @@ if uploaded_file and sheet_name:
 
 
         # =========================
-        # AI REFINEMENT
+        # OLLAMA AI REFINEMENT
+        # =========================
+        #
+        # st.subheader("AI Refinement")
+        #
+        # refinement_threshold = st.slider(
+        #     "Confidence threshold",
+        #     min_value=0.0,
+        #     max_value=1.0,
+        #     value=0.65,
+        #     step=0.01
+        # )
+        #
+        # refinement_model = st.text_input(
+        #     "Ollama model",
+        #     value=DEFAULT_OLLAMA_MODEL
+        # )
+        #
+        # refinement_max_rows = st.number_input(
+        #     "Max rows to refine",
+        #     min_value=1,
+        #     max_value=500,
+        #     value=25,
+        #     step=1
+        # )
+        #
+        # include_old_category_disagreement = st.checkbox(
+        #     "Include old-vs-new category disagreements",
+        #     value=True
+        # )
+        #
+        # if st.button("AI Refinement"):
+        #
+        #     with st.spinner("Running advisory AI refinement..."):
+        #
+        #         refinement_results = refine_transactions(
+        #             processed_df,
+        #             threshold=refinement_threshold,
+        #             model=refinement_model,
+        #             max_rows=int(refinement_max_rows),
+        #             include_old_category_disagreement=include_old_category_disagreement
+        #         )
+        #
+        #     if refinement_results:
+        #
+        #         st.dataframe(
+        #             refinement_results
+        #         )
+        #
+        #     else:
+        #
+        #         st.info(
+        #             "No rows matched the AI refinement routing criteria."
+        #         )
+
+
+        # =========================
+        # HUGGING FACE AI REFINEMENT
         # =========================
 
-        st.subheader("AI Refinement")
+        st.subheader("Hugging Face AI Refinement")
 
-        refinement_threshold = st.slider(
-            "Confidence threshold",
+        hf_refinement_threshold = st.slider(
+            "Low-confidence threshold",
             min_value=0.0,
             max_value=1.0,
             value=0.65,
-            step=0.01
+            step=0.01,
+            key="hf_refinement_threshold"
         )
 
-        refinement_model = st.text_input(
-            "Ollama model",
-            value=DEFAULT_OLLAMA_MODEL
+        hf_model_preset = st.selectbox(
+            "Hugging Face model route",
+            options=HUGGINGFACE_MODEL_OPTIONS + ["Custom"],
+            index=HUGGINGFACE_MODEL_OPTIONS.index(DEFAULT_HUGGINGFACE_MODEL),
+            key="hf_model_preset"
         )
 
-        refinement_max_rows = st.number_input(
+        hf_custom_model = st.text_input(
+            "Custom Hugging Face model route",
+            value="",
+            disabled=hf_model_preset != "Custom",
+            key="hf_custom_model"
+        )
+        st.caption(
+            "Use a model route supported by an enabled provider. If Custom is selected, paste the exact string from the Hugging Face Playground."
+        )
+
+        hf_refinement_model = (
+            hf_custom_model.strip()
+            if hf_model_preset == "Custom" and hf_custom_model.strip()
+            else hf_model_preset
+        )
+
+        hf_access_token = st.text_input(
+            "Hugging Face access token",
+            type="password",
+            key="hf_access_token"
+        )
+
+        hf_refinement_max_rows = st.number_input(
             "Max rows to refine",
             min_value=1,
             max_value=500,
             value=25,
-            step=1
+            step=1,
+            key="hf_refinement_max_rows"
         )
 
-        include_old_category_disagreement = st.checkbox(
+        hf_include_old_category_disagreement = st.checkbox(
             "Include old-vs-new category disagreements",
-            value=True
+            value=False,
+            key="hf_include_old_category_disagreement"
         )
 
-        if st.button("AI Refinement"):
+        hf_request_json_response = st.checkbox(
+            "Request provider JSON mode",
+            value=False,
+            key="hf_request_json_response"
+        )
+        st.caption(
+            "Leave this off if the hosted provider returns 400 for response_format. The local validator still extracts and validates JSON."
+        )
 
-            with st.spinner("Running advisory AI refinement..."):
+        if st.button(
+            "Hugging Face Refinement",
+            key="hf_refinement_button"
+        ):
 
-                refinement_results = refine_transactions(
+            with st.spinner("Running Hugging Face refinement..."):
+
+                hf_refinement_results = refine_transactions_with_huggingface(
                     processed_df,
-                    threshold=refinement_threshold,
-                    model=refinement_model,
-                    max_rows=int(refinement_max_rows),
-                    include_old_category_disagreement=include_old_category_disagreement
+                    threshold=hf_refinement_threshold,
+                    model=hf_refinement_model,
+                    token=hf_access_token.strip() or None,
+                    max_rows=int(hf_refinement_max_rows),
+                    include_old_category_disagreement=hf_include_old_category_disagreement,
+                    request_json_response=hf_request_json_response
                 )
 
-            if refinement_results:
+            if hf_refinement_results:
 
                 st.dataframe(
-                    refinement_results
+                    hf_refinement_results
                 )
 
             else:
 
                 st.info(
-                    "No rows matched the AI refinement routing criteria."
+                    "No rows matched the Hugging Face refinement routing criteria."
                 )
 
     except Exception as e:

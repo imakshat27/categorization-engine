@@ -10,6 +10,7 @@ from engine.refinement_contracts import (
     DETERMINISTIC_ENGINE_VERSION,
     DIAGNOSTIC_FLAGS,
     PROMPT_TEMPLATE_VERSION,
+    REQUIRED_AI_FIELDS,
     SEMANTIC_PAYLOAD_VERSION,
 )
 from engine.refinement_validator import validate_ai_output
@@ -208,14 +209,26 @@ def build_refinement_prompt(payload):
     instruction = {
         "task": "Validate deterministic transaction categorization using only the compact semantic payload.",
         "rules": [
-            "Return JSON only.",
+            "Return one JSON object only.",
+            "All required fields must be top-level keys on the returned object.",
+            "Do not wrap the response in instruction, output_schema, semantic_payload, response, result, or answer.",
+            "Do not use markdown fences or add explanatory prose.",
             "Do not invent categories.",
             "Use NO_CHANGE when deterministic category is semantically correct.",
             "Keep semantic_reason short and ontology-aligned.",
             "Do not provide chain-of-thought or verbose reasoning.",
             "AI confidence is advisory only.",
         ],
-        "output_schema": {
+        "required_top_level_fields": [
+            "decision",
+            "suggested_category",
+            "refinement_type",
+            "semantic_reason",
+            "missing_or_misread_signal",
+            "recommended_deterministic_improvement",
+            "ai_confidence_advisory",
+        ],
+        "field_definitions": {
             "decision": "NO_CHANGE or SUGGEST_CHANGE",
             "suggested_category": "One approved category",
             "refinement_type": "ENTITY_OVERRIDE, AMBIGUITY_RESOLUTION, PARSER_GAP, WEAK_DETERMINISTIC_EVIDENCE, or NO_ISSUE_DETECTED",
@@ -256,6 +269,49 @@ def _extract_json_object(text):
     return json.loads(match.group(0))
 
 
+def _has_required_ai_fields(value):
+    return isinstance(value, dict) and REQUIRED_AI_FIELDS.issubset(value)
+
+
+def _value_at_path(value, path):
+    current = value
+
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+
+        current = current.get(key)
+
+    return current
+
+
+def _normalize_ai_output_shape(ai_output):
+    if _has_required_ai_fields(ai_output):
+        return ai_output
+
+    wrapper_paths = [
+        ("instruction", "output_schema"),
+        ("output_schema",),
+        ("response",),
+        ("result",),
+        ("answer",),
+        ("refinement",),
+    ]
+
+    for path in wrapper_paths:
+        candidate = _value_at_path(ai_output, path)
+
+        if _has_required_ai_fields(candidate):
+            return candidate
+
+    if isinstance(ai_output, dict):
+        for candidate in ai_output.values():
+            if _has_required_ai_fields(candidate):
+                return candidate
+
+    return ai_output
+
+
 def call_ollama(prompt, model=DEFAULT_OLLAMA_MODEL, base_url=DEFAULT_OLLAMA_URL, timeout=120):
     response = requests.post(
         f"{base_url.rstrip('/')}/api/generate",
@@ -293,6 +349,7 @@ def refine_row(
     base_url=DEFAULT_OLLAMA_URL,
     generate_func=None,
     log_path=DEFAULT_LOG_PATH,
+    provider="ollama",
 ):
     payload = build_semantic_payload(row, row_index=row_index)
     prompt = build_refinement_prompt(payload)
@@ -305,12 +362,14 @@ def refine_row(
     )
 
     raw_response = ""
+    extracted_response = {}
     parsed_response = {}
     validation = {}
 
     try:
         raw_response = generate(prompt)
-        parsed_response = _extract_json_object(raw_response)
+        extracted_response = _extract_json_object(raw_response)
+        parsed_response = _normalize_ai_output_shape(extracted_response)
         validation = validate_ai_output(parsed_response, payload)
     except Exception as exc:
         validation = {
@@ -357,11 +416,12 @@ def refine_row(
         "semantic_payload": payload,
         "prompt": prompt,
         "raw_ai_response": raw_response,
+        "extracted_ai_response": extracted_response,
         "parsed_ai_response": parsed_response,
         "validation": validation,
         "refinement_result": result,
         "model_metadata": {
-            "provider": "ollama",
+            "provider": provider,
             "model": model,
             "base_url": base_url,
         },
@@ -380,6 +440,7 @@ def refine_transactions(
     log_path=DEFAULT_LOG_PATH,
     include_old_category_disagreement=True,
     max_rows=None,
+    provider="ollama",
 ):
     selected = select_rows_for_refinement(
         processed_df,
@@ -401,8 +462,8 @@ def refine_transactions(
                 base_url=base_url,
                 generate_func=generate_func,
                 log_path=log_path,
+                provider=provider,
             )
         )
 
     return results
-

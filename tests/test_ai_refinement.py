@@ -9,6 +9,7 @@ from engine.ai_refinement import (
     build_semantic_payload,
     refine_row,
     select_rows_for_refinement,
+    _normalize_ai_output_shape,
 )
 from engine.pipeline import process_transactions
 from engine.refinement_contracts import SEMANTIC_PAYLOAD_VERSION
@@ -133,7 +134,70 @@ class AIRefinementTests(unittest.TestCase):
                 SEMANTIC_PAYLOAD_VERSION,
             )
 
+    def test_normalizes_provider_wrapped_schema_response(self):
+        wrapped = {
+            "instruction": {
+                "output_schema": {
+                    "decision": "NO_CHANGE",
+                    "suggested_category": "TRANSFER OUT",
+                    "refinement_type": "NO_ISSUE_DETECTED",
+                    "semantic_reason": "generic transfer",
+                    "missing_or_misread_signal": "",
+                    "recommended_deterministic_improvement": "",
+                    "ai_confidence_advisory": "LOW",
+                }
+            }
+        }
+
+        normalized = _normalize_ai_output_shape(wrapped)
+
+        self.assertEqual(normalized["decision"], "NO_CHANGE")
+        self.assertEqual(normalized["suggested_category"], "TRANSFER OUT")
+
+    def test_refine_row_accepts_provider_wrapped_response(self):
+        row = processed_row("FRIEND OR FAMILY", debits=5000)
+
+        def fake_generate(_prompt):
+            return """
+```json
+{
+  "instruction": {
+    "output_schema": {
+      "decision": "NO_CHANGE",
+      "suggested_category": "TRANSFER OUT",
+      "refinement_type": "NO_ISSUE_DETECTED",
+      "semantic_reason": "generic outgoing transfer",
+      "missing_or_misread_signal": "",
+      "recommended_deterministic_improvement": "",
+      "ai_confidence_advisory": "LOW"
+    }
+  }
+}
+```
+
+Explanation: ignored.
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_path = os.path.join(tmpdir, "ai_refinement.jsonl")
+            result = refine_row(
+                row,
+                row_index=4,
+                generate_func=fake_generate,
+                log_path=log_path,
+                provider="huggingface",
+            )
+
+            self.assertEqual(result["Validation Status"], "ACCEPTED")
+            self.assertEqual(result["AI Decision"], "NO_CHANGE")
+
+            with open(log_path, "r", encoding="utf-8") as file:
+                log = json.loads(file.readline())
+
+            self.assertIn("extracted_ai_response", log)
+            self.assertIn("parsed_ai_response", log)
+            self.assertEqual(log["model_metadata"]["provider"], "huggingface")
+
 
 if __name__ == "__main__":
     unittest.main()
-
