@@ -116,6 +116,9 @@ def refine_transactions_with_huggingface(
     include_old_category_disagreement=False,
     max_rows=None,
     request_json_response=False,
+    routing_policy="balanced",
+    log_skipped="summary",
+    log_detail="summary",
 ):
     def generate(prompt):
         return call_huggingface_chat(
@@ -136,4 +139,7 @@ def refine_transactions_with_huggingface(
         include_old_category_disagreement=include_old_category_disagreement,
         max_rows=max_rows,
         provider="huggingface",
+        routing_policy=routing_policy,
+        log_skipped=log_skipped,
+        log_detail=log_detail,
     )

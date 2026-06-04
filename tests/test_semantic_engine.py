@@ -43,6 +43,16 @@ class SemanticEngineTests(unittest.TestCase):
         self.assertEqual(achd["family"], "ACH_DEBIT")
         self.assertEqual(achd["counterparty"], "HDBFINANCIALSERVIC")
 
+        ach_debit = parse_transaction(
+            {
+                "Normalized Narration": "ACHDEBIT:PY3001UV0000485FEB24,TVS CREDIT SERVICES",
+            }
+        )
+        self.assertEqual(ach_debit["rail"], "ACH")
+        self.assertEqual(ach_debit["family"], "ACH_DEBIT")
+        self.assertEqual(ach_debit["reference_id"], "PY3001UV0000485FEB24")
+        self.assertEqual(ach_debit["counterparty"], "TVS CREDIT SERVICES")
+
     def test_generic_rail_becomes_electronic_fund_transfer(self):
         result = classify_one("UPI/RRN 412288007493/UPI", debits=240.9)
         self.assertEqual(result["Category"], "ELECTRONIC FUND TRANSFER")
@@ -71,6 +81,7 @@ class SemanticEngineTests(unittest.TestCase):
         examples = [
             "ACHD/GROWTHSOURCEFINANC/020520240718",
             "ACHD/HDBFINANCIALSERVIC/HDBFIN90DIHK",
+            "ACHDEBIT:PY3001UV0000485FEB24,TVS CREDIT SERVICES",
         ]
 
         for narration in examples:

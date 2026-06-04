@@ -1,5 +1,6 @@
+import pandas as pd
 import streamlit as st
-from engine.ai_refinement import DEFAULT_OLLAMA_MODEL, refine_transactions
+from engine.ai_refinement import DEFAULT_OLLAMA_MODEL, DEFAULT_ROUTING_POLICY, refine_transactions
 # from engine.huggingface_refinement import (
 #     DEFAULT_HUGGINGFACE_MODEL,
 #     HUGGINGFACE_MODEL_OPTIONS,
@@ -234,9 +235,20 @@ if uploaded_file and sheet_name:
             step=1
         )
 
+        refinement_routing_policy = st.selectbox(
+            "AI routing policy",
+            options=["balanced", "strict", "exploratory"],
+            index=["balanced", "strict", "exploratory"].index(DEFAULT_ROUTING_POLICY)
+        )
+
         include_old_category_disagreement = st.checkbox(
             "Include old-vs-new category disagreements",
             value=True
+        )
+
+        refinement_audit_logging = st.checkbox(
+            "Full audit logging",
+            value=False
         )
 
         if st.button("AI Refinement"):
@@ -248,14 +260,75 @@ if uploaded_file and sheet_name:
                     threshold=refinement_threshold,
                     model=refinement_model,
                     max_rows=int(refinement_max_rows),
-                    include_old_category_disagreement=include_old_category_disagreement
+                    include_old_category_disagreement=include_old_category_disagreement,
+                    routing_policy=refinement_routing_policy,
+                    log_skipped="summary",
+                    log_detail="audit" if refinement_audit_logging else "summary"
                 )
 
             if refinement_results:
 
-                st.dataframe(
-                    refinement_results
+                refinement_df = pd.DataFrame(refinement_results)
+                outcome_counts = refinement_df["AI Outcome"].value_counts()
+                metric_columns = st.columns(4)
+                metric_columns[0].metric("Reviewed", len(refinement_df))
+                metric_columns[1].metric(
+                    "Engine fixes",
+                    int(outcome_counts.get("ENGINE_FIX_NEEDED", 0))
                 )
+                metric_columns[2].metric(
+                    "Change candidates",
+                    int(outcome_counts.get("CATEGORY_CHANGE_SUGGESTED", 0))
+                )
+                metric_columns[3].metric(
+                    "Confirmed",
+                    int(outcome_counts.get("CATEGORY_CONFIRMED", 0))
+                )
+
+                display_columns = [
+                    "Row Index",
+                    "Narration",
+                    "Old Category",
+                    "Category",
+                    "Confidence",
+                    "AI Outcome",
+                    "AI Suggested Category",
+                    "AI Finding",
+                    "AI Proposed Action",
+                    "AI Missing Signal",
+                    "AI Confidence Advisory",
+                    "AI Routing Reason",
+                ]
+                display_columns = [
+                    column for column in display_columns
+                    if column in refinement_df.columns
+                ]
+
+                st.dataframe(
+                    refinement_df[display_columns]
+                )
+
+                rejected_df = refinement_df[
+                    refinement_df["Validation Status"] == "REJECTED"
+                ]
+
+                if not rejected_df.empty:
+                    with st.expander("Rejected model outputs"):
+                        rejected_columns = [
+                            "Row Index",
+                            "Narration",
+                            "AI Decision",
+                            "AI Suggested Category",
+                            "Validation Errors",
+                        ]
+                        rejected_columns = [
+                            column for column in rejected_columns
+                            if column in rejected_df.columns
+                        ]
+
+                        st.dataframe(
+                            rejected_df[rejected_columns]
+                        )
 
             else:
 

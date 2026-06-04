@@ -73,11 +73,13 @@ def _compatible_with_payload(category, payload):
 
 def validate_ai_output(ai_output, payload):
     errors = []
+    warnings = []
 
     if not isinstance(ai_output, dict):
         return {
             "validation_status": "REJECTED",
             "validation_errors": ["AI output is not a JSON object"],
+            "validation_warnings": [],
             "validator_version": VALIDATOR_VERSION,
             "validated_output": {},
         }
@@ -111,7 +113,7 @@ def validate_ai_output(ai_output, payload):
             "SUGGEST_CHANGE requires suggested_category to differ from deterministic category"
         )
 
-    if suggested_category in APPROVED_CATEGORY_SET:
+    if decision == "SUGGEST_CHANGE" and suggested_category in APPROVED_CATEGORY_SET:
         compatible, compatibility_errors = _compatible_with_payload(
             suggested_category,
             payload,
@@ -119,11 +121,22 @@ def validate_ai_output(ai_output, payload):
 
         if not compatible:
             errors.extend(compatibility_errors)
+    elif (
+        decision in {"NEEDS_DETERMINISTIC_FIX", "INSUFFICIENT_EVIDENCE"}
+        and suggested_category in APPROVED_CATEGORY_SET
+    ):
+        compatible, compatibility_errors = _compatible_with_payload(
+            suggested_category,
+            payload,
+        )
+
+        if not compatible:
+            warnings.extend(compatibility_errors)
 
     return {
         "validation_status": "REJECTED" if errors else "ACCEPTED",
         "validation_errors": errors,
+        "validation_warnings": warnings,
         "validator_version": VALIDATOR_VERSION,
         "validated_output": ai_output if not errors else {},
     }
-
