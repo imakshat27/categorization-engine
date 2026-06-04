@@ -19,7 +19,7 @@ RAIL_TERMS = {
     "ATM": ["ATM", "NWD", "ATW"],
     "CHEQUE": ["CHQ", "CHEQUE", "CLG", "MICR"],
     "ECS": ["ECS"],
-    "ACH": ["ACH", "ACHD"],
+    "ACH": ["ACH", "ACHD", "ACHDEBIT"],
     "NACH": ["NACH"],
 }
 
@@ -98,7 +98,7 @@ INTENT_RULES = {
         "regex": [r"(?<![A-Z0-9])DD(?![A-Z0-9])"],
     },
     "direct_debit": {
-        "terms": ["DIRECT DEBIT", "NACH", "ECS", "ACH", "ACHD"],
+        "terms": ["DIRECT DEBIT", "NACH", "ECS", "ACH", "ACHD", "ACHDEBIT"],
         "regex": [],
     },
 }
