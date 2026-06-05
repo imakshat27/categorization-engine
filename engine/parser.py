@@ -51,6 +51,55 @@ def _extract_upi_id(result, narration):
         result["upi_handle"] = upi_id.split("@", 1)[1]
 
 
+UPI_SUBTYPE_TOKENS = {
+    "P2A",
+    "P2M",
+    "P2P",
+    "P2V",
+    "P2U",
+    "P2W",
+    "DR",
+    "CR",
+    "REV",
+    "RRN",
+}
+
+
+def _looks_like_upi_subtype(value):
+    return clean_entity_text(value) in UPI_SUBTYPE_TOKENS
+
+
+def _looks_like_reference(value):
+    return bool(re.fullmatch(r"[0-9]{6,}", value.strip()))
+
+
+def _bank_from_upi_tail(parts, start_index):
+    if len(parts) <= start_index:
+        return None
+
+    tail = [
+        clean_entity_text(part)
+        for part in parts[start_index:]
+        if clean_entity_text(part)
+    ]
+
+    if not tail:
+        return None
+
+    for value in reversed(tail):
+        compact = re.sub(r"[^A-Z0-9]+", "", value)
+        if (
+            "BANK" in value
+            or "FINANCE" in value
+            or compact.endswith("PAY")
+            or compact.endswith("YBL")
+            or compact.endswith("APL")
+        ):
+            return value
+
+    return tail[0]
+
+
 def parse_upi_transaction(narration):
     result = empty_parser_result()
     result["rail"] = "UPI"
@@ -118,23 +167,41 @@ def parse_upi_transaction(narration):
         result["family"] = "UPI_SLASH"
         result["parser_rule"] = "UPI_SLASH"
 
-        if len(parts) >= 2:
-            result["entity_name"] = clean_entity_text(parts[1])
+        if len(parts) >= 4 and _looks_like_upi_subtype(parts[1]) and _looks_like_reference(parts[2]):
+            result["transaction_subtype"] = clean_entity_text(parts[1])
+            result["reference_id"] = parts[2]
+            result["entity_name"] = clean_entity_text(parts[3])
+            bank_name = _bank_from_upi_tail(parts, 4)
 
-        if len(parts) >= 3:
-            if re.fullmatch(r"[0-9]{6,}", parts[2]):
-                result["reference_id"] = parts[2]
-            else:
-                result["transaction_subtype"] = clean_entity_text(parts[2])
+            if bank_name:
+                result["bank_name"] = bank_name
+        elif len(parts) >= 3 and _looks_like_reference(parts[1]):
+            result["reference_id"] = parts[1]
+            result["entity_name"] = clean_entity_text(parts[2])
+            bank_name = _bank_from_upi_tail(parts, 3)
 
-        if len(parts) >= 4:
-            if result["reference_id"] == "UNKNOWN" and re.fullmatch(r"[0-9]{6,}", parts[3]):
-                result["reference_id"] = parts[3]
-            elif result["transaction_subtype"] == "UNKNOWN":
-                result["transaction_subtype"] = clean_entity_text(parts[3])
+            if bank_name:
+                result["bank_name"] = bank_name
+        else:
+            if len(parts) >= 2:
+                result["entity_name"] = clean_entity_text(parts[1])
 
-        if len(parts) >= 5:
-            result["bank_name"] = clean_entity_text(parts[4])
+            if len(parts) >= 3:
+                if _looks_like_reference(parts[2]):
+                    result["reference_id"] = parts[2]
+                else:
+                    result["transaction_subtype"] = clean_entity_text(parts[2])
+
+            if len(parts) >= 4:
+                if result["reference_id"] == "UNKNOWN" and _looks_like_reference(parts[3]):
+                    result["reference_id"] = parts[3]
+                elif result["transaction_subtype"] == "UNKNOWN":
+                    result["transaction_subtype"] = clean_entity_text(parts[3])
+
+            bank_name = _bank_from_upi_tail(parts, 4)
+
+            if bank_name:
+                result["bank_name"] = bank_name
 
         _set_quality(result, "HIGH" if result["reference_id"] != "UNKNOWN" else "MEDIUM", 0.88)
         return _finalize(result)

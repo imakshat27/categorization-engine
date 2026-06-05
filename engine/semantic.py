@@ -46,15 +46,18 @@ INTENT_RULES = {
         "regex": [],
     },
     "tax": {
-        "terms": ["TAX", "GST", "TDS", "INCOME TAX"],
-        "regex": [],
+        "terms": ["TAX", "TDS", "INCOME TAX"],
+        "regex": [
+            r"\b(GST|TAX)\s+(PAYMENT|PAID|PMT|CHALLAN|REMITTANCE)\b",
+            r"\b(PAYMENT|PAID|PMT|CHALLAN)\s+(GST|TAX)\b",
+        ],
     },
     "interest": {
         "terms": ["INTEREST", "CREDIT INTEREST"],
         "regex": [],
     },
     "investment": {
-        "terms": ["INVESTMENT", "INVESTMENTS", "MUTUAL FUND", "SIP", "DEMAT", "FINANCE"],
+        "terms": ["INVESTMENT", "INVESTMENTS", "MUTUAL FUND", "SIP", "DEMAT"],
         "regex": [],
     },
     "insurance": {
@@ -74,7 +77,7 @@ INTENT_RULES = {
         "regex": [],
     },
     "loan": {
-        "terms": ["LOAN", "EMI", "FINANCE"],
+        "terms": ["LOAN", "EMI"],
         "regex": [r"\bEMI\d+"],
     },
     "fuel": {

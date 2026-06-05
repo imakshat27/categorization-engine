@@ -33,6 +33,32 @@ def processed_row(narration, debits=None, credits=None, **extra):
     return process_transactions(pd.DataFrame([row])).iloc[0]
 
 
+def refinement_row(row, policy="balanced", reason="SUBSTANTIVE_GROUP_AMBIGUITY"):
+    routed = row.copy()
+    routed["AI Refinement Eligible"] = True
+    routed["AI Routing Policy"] = policy
+    routed["AI Routing Reason"] = reason
+    routed["AI Skip Reason"] = ""
+    return routed
+
+
+def fake_suggested_change(category, reason="test suggestion"):
+    def generate(_prompt):
+        return json.dumps(
+            {
+                "decision": "SUGGEST_CHANGE",
+                "suggested_category": category,
+                "refinement_type": "AMBIGUITY_RESOLUTION",
+                "semantic_reason": reason,
+                "missing_or_misread_signal": "",
+                "recommended_deterministic_improvement": "",
+                "ai_confidence_advisory": "MEDIUM",
+            }
+        )
+
+    return generate
+
+
 class AIRefinementTests(unittest.TestCase):
     def test_payload_is_versioned_and_compact(self):
         row = processed_row(
@@ -52,7 +78,11 @@ class AIRefinementTests(unittest.TestCase):
         self.assertNotIn("Old Category", json.dumps(payload))
 
         prompt = build_refinement_prompt(payload)
-        self.assertLess(len(prompt), len(json.dumps({"category_definitions": CATEGORY_DEFINITIONS})))
+        self.assertLess(len(payload["category_definitions"]), len(CATEGORY_DEFINITIONS))
+        self.assertIn("safe_change_candidates", payload)
+        self.assertIn("blocked_transition_reasons", payload)
+        self.assertIn("deterministic_hypotheses", payload)
+        self.assertIn("change_allowed", payload)
 
     def test_balanced_routing_skips_zero_context_and_routes_entity_gap(self):
         generic_low = processed_row("UNRECOGNIZED LOCAL ENTRY", debits=123)
@@ -122,6 +152,8 @@ class AIRefinementTests(unittest.TestCase):
     def test_validator_rejects_direction_incompatible_category(self):
         row = processed_row("FRIEND OR FAMILY", debits=5000)
         payload = build_semantic_payload(row)
+        payload["safe_change_candidates"] = ["TRANSFER IN"]
+        payload["change_allowed"] = True
         validation = validate_ai_output(
             {
                 "decision": "SUGGEST_CHANGE",
@@ -136,7 +168,120 @@ class AIRefinementTests(unittest.TestCase):
         )
 
         self.assertEqual(validation["validation_status"], "REJECTED")
-        self.assertIn("requires direction", validation["validation_errors"][0])
+        self.assertTrue(
+            any("requires direction" in error for error in validation["validation_errors"])
+        )
+
+    def test_bank_charge_gst_component_does_not_become_tax(self):
+        row = processed_row("GST @18% on MAB Charge", debits=100)
+
+        self.assertEqual(row["Category"], "BANK CHARGES")
+        self.assertNotIn("tax", row["Intent Tags"])
+
+        result = refine_row(
+            refinement_row(row),
+            row_index=12,
+            generate_func=fake_suggested_change("TAX", "GST component misread as tax"),
+            log_detail="none",
+        )
+
+        self.assertEqual(result["AI Outcome"], "ENGINE_FIX_NEEDED")
+        self.assertEqual(result["AI Suggested Category"], "")
+        self.assertEqual(result["AI Mentioned Category"], "TAX")
+
+    def test_upi_without_card_evidence_cannot_suggest_debit_card_category(self):
+        row = processed_row(
+            "UPI/P2A/448543252500/Anijuddin/Paymen/Airtel Payments Bank",
+            debits=100,
+        )
+
+        self.assertEqual(row["Mode"], "UPI")
+        self.assertNotIn("debit_card", row["Movement Tags"])
+        self.assertEqual(row["Entity Type"], "UNKNOWN")
+        self.assertEqual(row["Entity Role"], "payment_bank")
+
+        result = refine_row(
+            refinement_row(row, reason="WEAK_DETERMINISTIC_EVIDENCE"),
+            row_index=30,
+            generate_func=fake_suggested_change(
+                "DEBIT CARD TRANSFER IN",
+                "card category hallucination",
+            ),
+            log_detail="none",
+        )
+
+        self.assertEqual(result["AI Outcome"], "ENGINE_FIX_NEEDED")
+        self.assertEqual(result["AI Suggested Category"], "")
+        self.assertEqual(result["AI Mentioned Category"], "DEBIT CARD TRANSFER IN")
+        self.assertIn("safe_change_candidates", result["Validation Warnings"])
+
+    def test_small_finance_bank_does_not_trigger_loan_or_investment(self):
+        row = processed_row(
+            "UPI/P2A/403434655418/Ashok  G/Paymen/ESAF Small Finance B",
+            debits=100,
+        )
+
+        self.assertEqual(row["Mode"], "UPI")
+        self.assertEqual(row["Transaction Subtype"], "P2A")
+        self.assertEqual(row["Entity Name"], "ASHOK G")
+        self.assertEqual(row["Bank Name"], "ESAF SMALL FINANCE B")
+        self.assertEqual(row["Entity Role"], "bank")
+        self.assertNotIn("loan", row["Intent Tags"])
+        self.assertNotIn("investment", row["Intent Tags"])
+        self.assertNotIn(row["Category"], {"LOAN", "INVESTMENTS"})
+
+    def test_specific_intent_categories_do_not_downgrade_to_generic_transfer(self):
+        cases = [
+            ("NET-NEFT-YESOB42271673906-DattatrayHagawane-CBIN0283141-Shop Rent May 2024-CENTRAL B", "ELECTRONIC FUND TRANSFER", "UTILITY"),
+            ("UPI/Jio Postpaid Bi/422685380758/NA", "ELECTRONIC FUND TRANSFER", "RECHARGE"),
+            ("DIRECT DEBIT-DR-BAJAJ FINANCELTD-P456PDB12589723", "TRANSFER OUT", "LOAN"),
+            ("Investment", "TRANSFER OUT", "INVESTMENTS"),
+        ]
+
+        for narration, suggested_category, expected_category in cases:
+            with self.subTest(narration=narration):
+                row = processed_row(narration, debits=100)
+                self.assertEqual(row["Category"], expected_category)
+
+                result = refine_row(
+                    refinement_row(row),
+                    generate_func=fake_suggested_change(
+                        suggested_category,
+                        "generic transfer downgrade",
+                    ),
+                    log_detail="none",
+                )
+
+                self.assertEqual(result["AI Outcome"], "ENGINE_FIX_NEEDED")
+                self.assertEqual(result["AI Suggested Category"], "")
+                self.assertEqual(result["AI Mentioned Category"], suggested_category)
+
+    def test_payment_channel_ambiguity_is_diagnostic_only(self):
+        row = processed_row(
+            "UPI/P2M/400641930556/Paytm Uti/PaytmPay/Oid22782/OTH",
+            debits=100,
+        )
+
+        self.assertEqual(row["Category"], "ELECTRONIC FUND TRANSFER")
+        self.assertEqual(row["Entity Role"], "payment_processor")
+
+        result = refine_row(
+            refinement_row(
+                row,
+                policy="exploratory",
+                reason="PAYMENT_CHANNEL_AMBIGUITY",
+            ),
+            row_index=5,
+            generate_func=fake_suggested_change(
+                "PAYMENT GATEWAY",
+                "payment channel misread as gateway intent",
+            ),
+            log_detail="none",
+        )
+
+        self.assertEqual(result["AI Outcome"], "ENGINE_FIX_NEEDED")
+        self.assertEqual(result["AI Suggested Category"], "")
+        self.assertEqual(result["AI Mentioned Category"], "PAYMENT GATEWAY")
 
     def test_refine_row_accepts_no_change_and_logs_replay_data(self):
         row = processed_row("UPI/RRN 412288007493/UPI", debits=100)
@@ -165,7 +310,8 @@ class AIRefinementTests(unittest.TestCase):
 
             self.assertEqual(result["Validation Status"], "ACCEPTED")
             self.assertEqual(result["AI Decision"], "NO_CHANGE")
-            self.assertEqual(result["AI Suggested Category"], row["Category"])
+            self.assertEqual(result["AI Suggested Category"], "")
+            self.assertEqual(result["AI Mentioned Category"], "")
 
             with open(log_path, "r", encoding="utf-8") as file:
                 log = json.loads(file.readline())
@@ -296,7 +442,8 @@ class AIRefinementTests(unittest.TestCase):
         self.assertEqual(result["Validation Status"], "ACCEPTED")
         self.assertEqual(result["AI Decision"], "NEEDS_DETERMINISTIC_FIX")
         self.assertEqual(result["AI Outcome"], "ENGINE_FIX_NEEDED")
-        self.assertEqual(result["AI Suggested Category"], "ACH BOUNCED CHARGES")
+        self.assertEqual(result["AI Suggested Category"], "")
+        self.assertEqual(result["AI Mentioned Category"], "ACH BOUNCED CHARGES")
         self.assertIn("requires rail", result["Validation Warnings"])
 
     def test_refine_transactions_logs_skipped_rows_without_model_call(self):

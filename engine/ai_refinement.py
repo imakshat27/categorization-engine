@@ -16,6 +16,7 @@ from engine.refinement_contracts import (
 from engine.refinement_validator import validate_ai_output
 from engine.taxonomy import (
     APPROVED_CATEGORY_SET,
+    CATEGORY_COMPATIBILITY_RULES,
     CATEGORY_DEFINITION_VERSION,
     CATEGORY_DEFINITIONS,
     CATEGORY_FAMILIES,
@@ -51,6 +52,19 @@ GENERIC_TRANSFER_CATEGORIES = {
     "TRANSFER IN",
     "TRANSFER OUT",
 }
+
+
+CARD_TRANSFER_CATEGORIES = {
+    "DEBIT CARD TRANSFER IN",
+    "DEBIT CARD TRANSFER OUT",
+}
+
+
+SPECIFIC_INTENT_CATEGORIES = (
+    APPROVED_CATEGORY_SET
+    - GENERIC_TRANSFER_CATEGORIES
+    - CARD_TRANSFER_CATEGORIES
+)
 
 
 PAYMENT_CHANNEL_ROLES = {
@@ -143,6 +157,19 @@ BUSINESS_COUNTERPARTY_TERMS = {
 }
 
 
+EXPLICIT_TAX_PAYMENT_PATTERNS = [
+    r"\b(INCOME\s+TAX|TDS|TCS|CBDT|CBIC)\b",
+    r"\b(GST|TAX)\s+(PAYMENT|PAID|PMT|CHALLAN|REMITTANCE)\b",
+    r"\b(PAYMENT|PAID|PMT|CHALLAN)\s+(GST|TAX)\b",
+    r"\bGST\s+TAX\s+PAYMENT\b",
+]
+
+
+PAYMENT_GATEWAY_INTENT_PATTERNS = [
+    r"\b(SETTLEMENT|MERCHANT\s+SETTLEMENT|GATEWAY|AGGREGATOR|PAYOUT)\b",
+]
+
+
 def _pipe_values(value):
     if value in (None, ""):
         return []
@@ -162,6 +189,10 @@ def _pipe_values(value):
         ]
 
     return [str(value).strip()]
+
+
+def _values(value):
+    return set(_pipe_values(value))
 
 
 def _confidence_band(confidence):
@@ -213,6 +244,15 @@ def _top_candidates(row, limit=3):
     return candidates
 
 
+def _candidate_evidence(row, category):
+    prefix = f"{category} <= "
+    return [
+        item
+        for item in _pipe_values(row.get("Evidence Summary", ""))
+        if item.startswith(prefix)
+    ]
+
+
 def _float_value(value, default=0.0):
     try:
         return float(value)
@@ -225,6 +265,65 @@ def _clean_value(value):
         return ""
 
     return str(value).strip()
+
+
+def _row_text(row):
+    return " ".join(
+        _clean_value(row.get(field))
+        for field in ("Normalized Narration", "Narration", "Remarks", "Entity Name", "Bank Name")
+    ).upper()
+
+
+def _has_pattern(row, patterns):
+    text = _row_text(row)
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in patterns)
+
+
+def _explicit_tax_payment(row):
+    return _has_pattern(row, EXPLICIT_TAX_PAYMENT_PATTERNS)
+
+
+def _explicit_payment_gateway_intent(row):
+    return _has_pattern(row, PAYMENT_GATEWAY_INTENT_PATTERNS)
+
+
+def _category_compatible_with_row(category, row):
+    rules = CATEGORY_COMPATIBILITY_RULES.get(category)
+
+    if not rules:
+        return []
+
+    errors = []
+    direction = _clean_value(row.get("Direction")) or "UNKNOWN"
+    rail = _clean_value(row.get("Mode")) or "UNKNOWN"
+
+    allowed_directions = rules.get("direction")
+    if allowed_directions and direction not in allowed_directions:
+        errors.append(
+            f"{category} requires direction {sorted(allowed_directions)}, got {direction}"
+        )
+
+    allowed_rails = rules.get("rail")
+    if allowed_rails and rail not in allowed_rails:
+        errors.append(
+            f"{category} requires rail {sorted(allowed_rails)}, got {rail}"
+        )
+
+    summary_values = {
+        "movement_tags": _values(row.get("Movement Tags", "")),
+        "intent_tags": _values(row.get("Intent Tags", "")),
+        "entity_category": {_clean_value(row.get("Entity Type"))} - {""},
+        "entity_role": {_clean_value(row.get("Entity Role"))} - {""},
+    }
+
+    for field, required_values in rules.get("requires_any", {}).items():
+        available = summary_values.get(field, set())
+        if not available.intersection(required_values):
+            errors.append(
+                f"{category} requires one of {sorted(required_values)} in {field}, got {sorted(available)}"
+            )
+
+    return errors
 
 
 def _normalize_policy(routing_policy):
@@ -269,6 +368,129 @@ def _business_like_counterparty(counterparty):
 
     compact = re.sub(r"[^A-Z0-9]+", "", text)
     return any(term in compact for term in BUSINESS_COUNTERPARTY_TERMS if len(term) >= 5)
+
+
+def _has_specific_semantic_evidence(row):
+    category = _clean_value(row.get("Category"))
+    entity_category = _clean_value(row.get("Entity Type"))
+    entity_role = _clean_value(row.get("Entity Role"))
+    intent_tags = set(_pipe_values(row.get("Intent Tags", "")))
+    bank_family = _clean_value(row.get("Bank Family"))
+
+    if category in SPECIFIC_INTENT_CATEGORIES:
+        return True
+
+    if entity_category and entity_category in SPECIFIC_INTENT_CATEGORIES:
+        return True
+
+    if entity_role in PAYMENT_CHANNEL_ROLES:
+        return False
+
+    return bool(intent_tags or bank_family)
+
+
+def _transition_blockers(row, target_category):
+    current_category = _clean_value(row.get("Category"))
+    target_category = _clean_value(target_category)
+    rail = _clean_value(row.get("Mode"))
+    routing_policy = _clean_value(row.get("AI Routing Policy")) or DEFAULT_ROUTING_POLICY
+    intent_tags = set(_pipe_values(row.get("Intent Tags", "")))
+    movement_tags = set(_pipe_values(row.get("Movement Tags", "")))
+    entity_category = _clean_value(row.get("Entity Type"))
+    entity_role = _clean_value(row.get("Entity Role"))
+    bank_family = _clean_value(row.get("Bank Family"))
+    evidence = _candidate_evidence(row, target_category)
+    blockers = []
+
+    if not target_category or target_category == current_category:
+        return blockers
+
+    if routing_policy == "exploratory":
+        blockers.append("exploratory routing is diagnostic-only")
+
+    blockers.extend(_category_compatible_with_row(target_category, row))
+
+    if not evidence:
+        blockers.append("category is not supported by deterministic evidence")
+
+    if target_category in CARD_TRANSFER_CATEGORIES and "debit_card" not in movement_tags:
+        blockers.append("debit-card category requires explicit card-network movement evidence")
+
+    if (
+        target_category in GENERIC_TRANSFER_CATEGORIES
+        and current_category not in GENERIC_TRANSFER_CATEGORIES
+        and _has_specific_semantic_evidence(row)
+    ):
+        blockers.append("generic transfer cannot override stronger specific semantic evidence")
+
+    if (
+        target_category == "ELECTRONIC FUND TRANSFER"
+        and rail in {"UPI", "IMPS", "NEFT", "RTGS"}
+        and current_category in SPECIFIC_INTENT_CATEGORIES
+    ):
+        blockers.append("generic rail evidence cannot override specific intent or entity evidence")
+
+    if (
+        target_category == "TAX"
+        and ("charge" in intent_tags or bank_family == "BANK_CHARGE" or current_category == "BANK CHARGES")
+        and not _explicit_tax_payment(row)
+    ):
+        blockers.append("GST or tax component inside bank-charge narration is not a tax payment")
+
+    if (
+        target_category == "PAYMENT GATEWAY"
+        and entity_role in PAYMENT_CHANNEL_ROLES
+        and not _explicit_payment_gateway_intent(row)
+    ):
+        blockers.append("payment-channel mention is channel context, not payment-gateway intent")
+
+    if (
+        target_category in {"LOAN", "INVESTMENTS"}
+        and current_category in {"LOAN", "INVESTMENTS"}
+        and target_category != current_category
+        and entity_category != target_category
+    ):
+        blockers.append("loan and investment transition needs explicit target entity evidence")
+
+    return list(dict.fromkeys(blockers))
+
+
+def _safe_change_analysis(row):
+    deterministic_category = _clean_value(row.get("Category"))
+    safe = []
+    blocked = {}
+    hypotheses = []
+
+    for candidate in _top_candidates(row, limit=5):
+        category = candidate.get("category")
+
+        if not category or category not in APPROVED_CATEGORY_SET:
+            continue
+
+        evidence = _candidate_evidence(row, category)
+
+        if category == deterministic_category:
+            status = "CURRENT"
+            blockers = []
+        else:
+            blockers = _transition_blockers(row, category)
+            status = "BLOCKED" if blockers else "SAFE_CHANGE"
+
+            if blockers:
+                blocked[category] = blockers
+            elif category not in safe:
+                safe.append(category)
+
+        hypotheses.append(
+            {
+                "category": category,
+                "score": candidate.get("score"),
+                "status": status,
+                "blocked_reasons": blockers,
+            }
+        )
+
+    return safe, blocked, hypotheses
 
 
 def _route_context(row, threshold, include_old_category_disagreement, routing_policy):
@@ -589,68 +811,13 @@ def _add_category_hint(categories, category):
         categories.add(category)
 
 
-def _category_definitions_for_row(row):
+def _category_definitions_for_row(row, safe_change_candidates=None):
     categories = set()
-    direction = _clean_value(row.get("Direction"))
-    rail = _clean_value(row.get("Mode"))
-    entity_category = _clean_value(row.get("Entity Type"))
-    counterparty = _clean_value(row.get("Entity Name"))
-    routing_reason = _clean_value(row.get("AI Routing Reason"))
-    intent_tags = set(_pipe_values(row.get("Intent Tags", "")))
-    movement_tags = set(_pipe_values(row.get("Movement Tags", "")))
-    possible_entity_gap = (
-        not entity_category
-        and _business_like_counterparty(counterparty)
-    )
 
     _add_category_hint(categories, row.get("Category"))
-    _add_category_hint(categories, entity_category)
 
-    for candidate in _top_candidates(row, limit=5):
-        _add_category_hint(categories, candidate.get("category"))
-
-    for category in RAIL_CATEGORY_HINTS.get(rail, set()):
+    for category in safe_change_candidates or []:
         _add_category_hint(categories, category)
-
-    for tag in intent_tags:
-        for category in INTENT_CATEGORY_HINTS.get(tag, set()):
-            _add_category_hint(categories, category)
-
-    if direction == "IN":
-        _add_category_hint(categories, "TRANSFER IN")
-    elif direction == "OUT":
-        _add_category_hint(categories, "TRANSFER OUT")
-    else:
-        _add_category_hint(categories, "ELECTRONIC FUND TRANSFER")
-
-    if "debit_card" in movement_tags:
-        _add_category_hint(
-            categories,
-            "DEBIT CARD TRANSFER IN" if direction == "IN" else "DEBIT CARD TRANSFER OUT",
-        )
-
-    if "cash" in movement_tags:
-        _add_category_hint(categories, "CASH DEPOSIT")
-        _add_category_hint(categories, "CASH WITHDRAWAL")
-
-    if "cheque" in movement_tags:
-        for category in CATEGORY_FAMILIES["cheque"]:
-            _add_category_hint(categories, category)
-
-    if (
-        routing_reason in {"ENTITY_RULE_GAP", "PARSER_GAP", "WEAK_DETERMINISTIC_EVIDENCE"}
-        or possible_entity_gap
-    ):
-        for category in CATEGORY_FAMILIES["generic_transfer"]:
-            _add_category_hint(categories, category)
-
-        if entity_category in {"UNKNOWN", ""}:
-            for category in CATEGORY_FAMILIES["merchant_intent"]:
-                _add_category_hint(categories, category)
-
-    if not categories:
-        for category in CATEGORY_FAMILIES["generic_transfer"]:
-            _add_category_hint(categories, category)
 
     return {
         category: CATEGORY_DEFINITIONS[category]
@@ -659,7 +826,14 @@ def _category_definitions_for_row(row):
 
 
 def build_semantic_payload(row, row_index=None):
-    category_definitions = _category_definitions_for_row(row)
+    safe_change_candidates, blocked_transition_reasons, deterministic_hypotheses = (
+        _safe_change_analysis(row)
+    )
+    category_definitions = _category_definitions_for_row(
+        row,
+        safe_change_candidates=safe_change_candidates,
+    )
+    deterministic_category = row.get("Category", "UNKNOWN")
     payload = {
         "semantic_payload_version": SEMANTIC_PAYLOAD_VERSION,
         "payload_created_at": datetime.now(timezone.utc).isoformat(),
@@ -672,7 +846,7 @@ def build_semantic_payload(row, row_index=None):
         "narration": row.get("Narration", ""),
         "normalized_narration": row.get("Normalized Narration", ""),
         "deterministic": {
-            "category": row.get("Category", "UNKNOWN"),
+            "category": deterministic_category,
             "confidence": row.get("Confidence", 0.0),
             "confidence_band": _confidence_band(row.get("Confidence", 0.0)),
             "review_required": bool(row.get("Review Required", False)),
@@ -684,8 +858,10 @@ def build_semantic_payload(row, row_index=None):
         "semantic_summary": {
             "rail": row.get("Mode", "UNKNOWN"),
             "protocol_family": row.get("Protocol Family", "UNKNOWN"),
+            "subtype": row.get("Transaction Subtype", "UNKNOWN"),
             "direction": row.get("Direction", "UNKNOWN"),
             "counterparty": row.get("Entity Name", "UNKNOWN"),
+            "bank": row.get("Bank Name", "UNKNOWN"),
             "entity_category": row.get("Entity Type", "UNKNOWN"),
             "entity_role": row.get("Entity Role", "UNKNOWN"),
             "entity_confidence": row.get("Entity Confidence", 0.0),
@@ -697,7 +873,17 @@ def build_semantic_payload(row, row_index=None):
         "major_conflicts": _major_conflicts(row),
         "diagnostic_flags": diagnostic_flags_for_row(row),
         "deterministic_evidence_summary": _pipe_values(row.get("Evidence Summary", "")),
-        "allowed_categories": sorted(category_definitions),
+        "safe_change_candidates": sorted(safe_change_candidates),
+        "blocked_transition_reasons": blocked_transition_reasons,
+        "deterministic_hypotheses": deterministic_hypotheses,
+        "change_allowed": bool(safe_change_candidates),
+        "allowed_categories": sorted(
+            {
+                category
+                for category in [deterministic_category] + safe_change_candidates
+                if category in APPROVED_CATEGORY_SET
+            }
+        ),
         "category_definitions": category_definitions,
     }
 
@@ -706,12 +892,14 @@ def build_semantic_payload(row, row_index=None):
 
 def build_refinement_prompt(payload):
     instruction = {
-        "task": "Advisory validation of deterministic transaction categorization.",
+        "task": "Validate deterministic transaction categorization under strict semantic constraints.",
         "rules": [
             "Return one compact JSON object only.",
-            "Use only semantic_payload.allowed_categories for suggested_category.",
-            "Use SUGGEST_CHANGE only when the payload supports a safe category change now.",
+            "For NO_CHANGE, NEEDS_DETERMINISTIC_FIX, and INSUFFICIENT_EVIDENCE, suggested_category must equal semantic_payload.deterministic.category.",
+            "Use SUGGEST_CHANGE only when semantic_payload.change_allowed is true and suggested_category is in semantic_payload.safe_change_candidates.",
+            "Never suggest categories listed in semantic_payload.blocked_transition_reasons.",
             "Use NEEDS_DETERMINISTIC_FIX when parser/entity/evidence context is weak and needs engine work before a safe category change.",
+            "If an unsafe category seems relevant, keep suggested_category as the deterministic category and put the unsafe category in mentioned_category.",
             "Use INSUFFICIENT_EVIDENCE when neither a category change nor a deterministic fix is supported.",
             "Use NO_CHANGE when the deterministic category is semantically correct.",
             "No markdown, prose, chain-of-thought, or wrapper objects.",
@@ -727,7 +915,8 @@ def build_refinement_prompt(payload):
         ],
         "field_definitions": {
             "decision": "NO_CHANGE, SUGGEST_CHANGE, NEEDS_DETERMINISTIC_FIX, or INSUFFICIENT_EVIDENCE",
-            "suggested_category": "One category from semantic_payload.allowed_categories",
+            "suggested_category": "Deterministic category unless decision is SUGGEST_CHANGE; for SUGGEST_CHANGE use one category from semantic_payload.safe_change_candidates",
+            "mentioned_category": "Optional unsafe or diagnostic category mentioned only when no safe change is allowed",
             "refinement_type": "ENTITY_OVERRIDE, AMBIGUITY_RESOLUTION, PARSER_GAP, WEAK_DETERMINISTIC_EVIDENCE, or NO_ISSUE_DETECTED",
             "semantic_reason": "Short ontology-aligned phrase",
             "missing_or_misread_signal": "Short phrase or empty string",
@@ -822,6 +1011,12 @@ def _default_engine_fix(payload, validation_errors=None):
     if any("requires direction" in error for error in errors):
         return "Fix movement direction evidence before accepting this category."
 
+    if any("requires one of" in error for error in errors):
+        return "Fix missing semantic evidence before accepting this category."
+
+    if any("safe_change_candidates" in error or "SUGGEST_CHANGE is not allowed" in error for error in errors):
+        return "Keep the deterministic category and add deterministic evidence before allowing this transition."
+
     if routing_reason == "ENTITY_RULE_GAP" or summary.get("entity_category") == "UNKNOWN":
         return "Add counterparty to entity registry or merchant/category mapping."
 
@@ -862,7 +1057,10 @@ def _coerce_legacy_ai_output(ai_output, payload):
             normalized["recommended_deterministic_improvement"] = _default_engine_fix(payload)
 
     if normalized.get("decision") in {"NEEDS_DETERMINISTIC_FIX", "INSUFFICIENT_EVIDENCE"}:
-        if normalized.get("suggested_category") not in APPROVED_CATEGORY_SET:
+        if normalized.get("suggested_category") != deterministic_category:
+            if normalized.get("suggested_category") in APPROVED_CATEGORY_SET:
+                normalized.setdefault("mentioned_category", normalized["suggested_category"])
+
             normalized["suggested_category"] = deterministic_category
 
         if not normalized.get("recommended_deterministic_improvement"):
@@ -890,6 +1088,8 @@ def _salvage_advisory_validation(ai_output, payload, validation):
             or "requires direction" in error
             or "requires one of" in error
             or "SUGGEST_CHANGE requires suggested_category to differ" in error
+            or "safe_change_candidates" in error
+            or "SUGGEST_CHANGE is not allowed" in error
         )
         for error in validation_errors
     )
@@ -899,6 +1099,8 @@ def _salvage_advisory_validation(ai_output, payload, validation):
 
     advisory_output = dict(ai_output)
     advisory_output["decision"] = "NEEDS_DETERMINISTIC_FIX"
+    advisory_output["mentioned_category"] = suggested_category
+    advisory_output["suggested_category"] = payload.get("deterministic", {}).get("category")
 
     if not advisory_output.get("recommended_deterministic_improvement"):
         advisory_output["recommended_deterministic_improvement"] = _default_engine_fix(
@@ -1201,6 +1403,19 @@ def refine_row(
     suggested_category = accepted.get("suggested_category", parsed_for_display.get("suggested_category", ""))
     ai_decision = accepted.get("decision", parsed_for_display.get("decision", "INVALID_RESPONSE"))
     ai_outcome = _ai_outcome(validation, accepted)
+    mentioned_category = accepted.get(
+        "mentioned_category",
+        parsed_for_display.get("mentioned_category", ""),
+    )
+
+    if ai_outcome != "CATEGORY_CHANGE_SUGGESTED" and not mentioned_category:
+        parsed_suggestion = parsed_for_display.get("suggested_category", "")
+        if parsed_suggestion and parsed_suggestion != deterministic_category:
+            mentioned_category = parsed_suggestion
+
+    display_suggested_category = (
+        suggested_category if ai_outcome == "CATEGORY_CHANGE_SUGGESTED" else ""
+    )
     diagnostic_flags = list(payload["diagnostic_flags"])
 
     if (
@@ -1224,7 +1439,8 @@ def refine_row(
         "AI Skip Reason": payload["deterministic"]["ai_skip_reason"],
         "AI Outcome": ai_outcome,
         "AI Decision": ai_decision,
-        "AI Suggested Category": suggested_category,
+        "AI Suggested Category": display_suggested_category,
+        "AI Mentioned Category": mentioned_category,
         "Refinement Type": accepted.get("refinement_type", parsed_for_display.get("refinement_type", "")),
         "AI Finding": _ai_finding(validation, accepted, parsed_response),
         "AI Proposed Action": _ai_proposed_action(validation, accepted, parsed_response, payload),

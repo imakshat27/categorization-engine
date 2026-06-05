@@ -63,7 +63,7 @@ def _compatible_with_payload(category, payload):
     for field, required_values in rules.get("requires_any", {}).items():
         available = _values(summary.get(field))
 
-        if available and not available.intersection(required_values):
+        if not available.intersection(required_values):
             errors.append(
                 f"{category} requires one of {sorted(required_values)} in {field}, got {sorted(available)}"
             )
@@ -93,6 +93,9 @@ def validate_ai_output(ai_output, payload):
     suggested_category = ai_output.get("suggested_category")
     refinement_type = ai_output.get("refinement_type")
     deterministic_category = payload.get("deterministic", {}).get("category")
+    safe_change_candidates = set(payload.get("safe_change_candidates", []))
+    change_allowed = bool(payload.get("change_allowed", bool(safe_change_candidates)))
+    blocked_transition_reasons = payload.get("blocked_transition_reasons", {})
 
     if decision not in AI_DECISIONS:
         errors.append(f"Invalid decision: {decision}")
@@ -108,10 +111,33 @@ def validate_ai_output(ai_output, payload):
             "NO_CHANGE requires suggested_category to equal deterministic category"
         )
 
-    if decision == "SUGGEST_CHANGE" and suggested_category == deterministic_category:
-        errors.append(
-            "SUGGEST_CHANGE requires suggested_category to differ from deterministic category"
-        )
+    if decision in {"NEEDS_DETERMINISTIC_FIX", "INSUFFICIENT_EVIDENCE"}:
+        if suggested_category != deterministic_category:
+            errors.append(
+                f"{decision} requires suggested_category to equal deterministic category"
+            )
+
+    if decision == "SUGGEST_CHANGE":
+        if suggested_category == deterministic_category:
+            errors.append(
+                "SUGGEST_CHANGE requires suggested_category to differ from deterministic category"
+            )
+
+        if not change_allowed:
+            errors.append("SUGGEST_CHANGE is not allowed for this payload")
+
+        if suggested_category not in safe_change_candidates:
+            reason = blocked_transition_reasons.get(suggested_category)
+            if reason:
+                if isinstance(reason, list):
+                    reason = "; ".join(reason)
+                errors.append(
+                    f"SUGGEST_CHANGE requires suggested_category in safe_change_candidates; {suggested_category} blocked: {reason}"
+                )
+            else:
+                errors.append(
+                    f"SUGGEST_CHANGE requires suggested_category in safe_change_candidates, got {suggested_category}"
+                )
 
     if decision == "SUGGEST_CHANGE" and suggested_category in APPROVED_CATEGORY_SET:
         compatible, compatibility_errors = _compatible_with_payload(

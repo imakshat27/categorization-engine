@@ -293,6 +293,7 @@ if uploaded_file and sheet_name:
                     "Confidence",
                     "AI Outcome",
                     "AI Suggested Category",
+                    "AI Mentioned Category",
                     "AI Finding",
                     "AI Proposed Action",
                     "AI Missing Signal",
@@ -319,6 +320,7 @@ if uploaded_file and sheet_name:
                             "Narration",
                             "AI Decision",
                             "AI Suggested Category",
+                            "AI Mentioned Category",
                             "Validation Errors",
                         ]
                         rejected_columns = [
