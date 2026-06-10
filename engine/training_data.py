@@ -116,6 +116,41 @@ def _confidence_value(row):
         return 0.0
 
 
+def _training_confidence_value(row):
+    value = _row_value(
+        row,
+        "Confidence",
+        _row_value(
+            row,
+            "confidence",
+            _row_value(row, "deterministic_confidence", 0.0),
+        ),
+    )
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _training_direction(row):
+    direction = (
+        _string_value(row, "Direction")
+        or _string_value(row, "direction")
+    ).upper()
+
+    direction_map = {
+        "OUT": "DEBIT",
+        "DR": "DEBIT",
+        "DEBIT": "DEBIT",
+        "IN": "CREDIT",
+        "CR": "CREDIT",
+        "CREDIT": "CREDIT",
+    }
+
+    return direction_map.get(direction, direction or "UNKNOWN")
+
+
 def _pipe_values(value):
     if _is_missing(value) or value == "":
         return []
@@ -520,14 +555,13 @@ def build_training_record(
     if final_category not in APPROVED_CATEGORY_SET:
         raise ValueError(f"Unapproved category: {final_category}")
 
-    deterministic_category = _string_value(row, "Category", "UNKNOWN")
-
     return {
         "bank": _bank_value(row),
         "narration": _narration_value(row),
-        "deterministic_category": deterministic_category,
-        "deterministic_confidence": _confidence_value(row),
-        "verified_category": final_category,
+        "direction": _training_direction(row),
+        "predicted_category": _string_value(row, "Category", "UNKNOWN"),
+        "confidence": _training_confidence_value(row),
+        "correct_category": final_category,
     }
 
 
@@ -538,20 +572,21 @@ def normalize_review_record(record):
     return {
         "bank": _bank_value(record),
         "narration": _narration_value(record),
-        "deterministic_category": _string_value(
+        "direction": _training_direction(record),
+        "predicted_category": _string_value(
             record,
-            "deterministic_category",
-            "UNKNOWN",
+            "predicted_category",
+            _string_value(record, "deterministic_category", "UNKNOWN"),
         ),
-        "deterministic_confidence": _row_value(
+        "confidence": _training_confidence_value(record),
+        "correct_category": _string_value(
             record,
-            "deterministic_confidence",
-            _row_value(record, "confidence", 0.0),
-        ),
-        "verified_category": _string_value(
-            record,
-            "verified_category",
-            _string_value(record, "final_verified_category", ""),
+            "correct_category",
+            _string_value(
+                record,
+                "verified_category",
+                _string_value(record, "final_verified_category", ""),
+            ),
         ),
     }
 
@@ -705,13 +740,13 @@ def upsert_review_records(
 
 def training_corpus_stats(records):
     categories = Counter(
-        record.get("verified_category", "UNKNOWN")
+        record.get("correct_category", "UNKNOWN")
         for record in records
     )
     corrections = sum(
         1
         for record in records
-        if record.get("verified_category") != record.get("deterministic_category")
+        if record.get("correct_category") != record.get("predicted_category")
     )
 
     return {

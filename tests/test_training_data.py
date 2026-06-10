@@ -80,9 +80,10 @@ class TrainingDataTests(unittest.TestCase):
             {
                 "bank": "Test Bank",
                 "narration": "UPI/IRCTC/123456789/NA",
-                "deterministic_category": "ELECTRONIC FUND TRANSFER",
-                "deterministic_confidence": 0.62,
-                "verified_category": "TRAVEL",
+                "direction": "DEBIT",
+                "predicted_category": "ELECTRONIC FUND TRANSFER",
+                "confidence": 0.62,
+                "correct_category": "TRAVEL",
             },
         )
 
@@ -123,7 +124,7 @@ class TrainingDataTests(unittest.TestCase):
             self.assertEqual(stats["skipped_duplicates"], 1)
             records = load_review_records(path)
             self.assertEqual(len(records), 1)
-            self.assertEqual(records[0]["verified_category"], "ELECTRONIC FUND TRANSFER")
+            self.assertEqual(records[0]["correct_category"], "ELECTRONIC FUND TRANSFER")
 
             stats = upsert_review_records(
                 [updated],
@@ -133,15 +134,16 @@ class TrainingDataTests(unittest.TestCase):
             self.assertEqual(stats["updated"], 1)
             records = load_review_records(path)
             self.assertEqual(len(records), 1)
-            self.assertEqual(records[0]["verified_category"], "TRAVEL")
+            self.assertEqual(records[0]["correct_category"], "TRAVEL")
             self.assertEqual(
                 set(records[0]),
                 {
                     "bank",
                     "narration",
-                    "deterministic_category",
-                    "deterministic_confidence",
-                    "verified_category",
+                    "direction",
+                    "predicted_category",
+                    "confidence",
+                    "correct_category",
                 },
             )
 

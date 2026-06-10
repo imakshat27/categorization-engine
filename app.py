@@ -369,7 +369,7 @@ def _render_training_review(processed_df):
             lambda transaction_id: review_index.get(
                 transaction_id,
                 {},
-            ).get("verified_category", "")
+            ).get("correct_category", "")
         )
         editor_df["Verified Category"] = editor_df.apply(
             lambda row: row["Existing Verified Category"] or row.get("Category", ""),
