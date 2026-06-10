@@ -1,0 +1,7 @@
+{"bank": "State Bank of India", "deterministic_category": "DEBIT CARD TRANSFER OUT", "deterministic_confidence": 0.47, "narration": "by debit card-OTHPOS419118889577JAYSHREENATHFILLINGHJAIPUR-", "verified_category": "DEBIT CARD TRANSFER OUT"}
+{"bank": "State Bank of India", "deterministic_category": "FUEL", "deterministic_confidence": 0.83, "narration": "by debit card-SBIPOS005253672487JayShree nath Filling JAIPUR-", "verified_category": "FUEL"}
+{"bank": "State Bank of India", "deterministic_category": "ATM WITHDRAWAL", "deterministic_confidence": 0.71, "narration": "ATM WDL-ATM CASH 41881LOHA MANDI ROAD JAIPURJAIPUR-", "verified_category": "ATM WITHDRAWAL"}
+{"bank": "State Bank of India", "deterministic_category": "ATM WITHDRAWAL", "deterministic_confidence": 0.71, "narration": "ATM WDL-ATM CASH 42321MURLIPURA BRANCHJAIPURJAIPUR-", "verified_category": "ATM WITHDRAWAL"}
+{"bank": "State Bank of India", "deterministic_category": "ATM WITHDRAWAL", "deterministic_confidence": 0.71, "narration": "ATM WDL-ATM CASH 6167SPECIAL CURRENCYADMINJAIPUR-", "verified_category": "ATM WITHDRAWAL"}
+{"bank": "State Bank of India", "deterministic_category": "ATM WITHDRAWAL", "deterministic_confidence": 0.71, "narration": "ATM WDL-ATM CASH 7081JAIPUR                JAIPUR-", "verified_category": "ATM WITHDRAWAL"}
+{"bank": "State Bank of India", "deterministic_category": "INTEREST", "deterministic_confidence": 0.89, "narration": "CREDIT INTEREST--", "verified_category": "INTEREST"}
