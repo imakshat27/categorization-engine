@@ -165,6 +165,16 @@ The canonical list, category families, precedence, fallback policy, confidence p
 
 ---
 
+## Documentation
+
+For deep-dives into the pipeline's operational logic and training paradigms, refer to our expanded documentation inside the `docs/` folder:
+
+- **[docs/system_flow.md](docs/system_flow.md):** A deeply detailed step-by-step pipeline reference mapping the ingestion, deterministic steps, logic application, evidence engine, and the AI validation layer to their exact scripts. Includes architecture flowcharts.
+- **[docs/training_guidelines.md](docs/training_guidelines.md):** Exact methodology for data preparation (`finetuning/prepare_dataset.py`), the review routing logic, and the 11 core training guidelines to prevent LLM overfitting or script-induced bias. Includes fine-tuning pipeline flowcharts.
+- **[docs/setup_and_run.md](docs/setup_and_run.md):** Simple Windows-focused quickstart instructions.
+
+---
+
 ## High-Level Architecture
 
 ```text
@@ -207,6 +217,11 @@ categorization-engine/
 ├── requirements.txt
 ├── README.md
 ├── AGENTS.md
+│
+├── docs/
+│   ├── setup_and_run.md
+│   ├── system_flow.md
+│   └── training_guidelines.md
 │
 ├── data/
 │   └── 375-EDIT.xlsx
